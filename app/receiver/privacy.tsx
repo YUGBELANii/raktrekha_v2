@@ -1,3 +1,4 @@
+import { ThemedText, ThemedView, useThemeColor } from '@/components/Themed';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
@@ -6,25 +7,29 @@ import {
   reauthenticateWithCredential,
   updatePassword,
 } from 'firebase/auth';
-import React, { useState } from 'react';
+import {
+  doc,
+  getDoc,
+  getFirestore,
+  setDoc
+} from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Dimensions,
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TextInput,
   TouchableOpacity,
-  View,
 } from 'react-native';
-
-const { width } = Dimensions.get('window');
+import { ms, s, vs } from 'react-native-size-matters';
 
 export default function PrivacySecurityScreen() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
   const auth = getAuth();
   const user = auth.currentUser;
+  const db = getFirestore();
 
   const [locationPref, setLocationPref] = useState(true);
   const [showProfile, setShowProfile] = useState(false);
@@ -36,6 +41,38 @@ export default function PrivacySecurityScreen() {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  const borderColor = useThemeColor({}, 'border');
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      if (!user) return;
+      const settingsRef = doc(db, 'users', user.uid, 'privacy', 'settings');
+      const snapshot = await getDoc(settingsRef);
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        setLocationPref(data.locationPref ?? true);
+        setShowProfile(data.showProfile ?? false);
+        setShowRequests(data.showRequests ?? false);
+        setShowDonations(data.showDonations ?? false);
+        setShowEmergencyContact(data.showEmergencyContact ?? false);
+      }
+    };
+
+    fetchSettings();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  const updateSetting = async (key: string, value: boolean) => {
+    if (!user) return;
+    const settingsRef = doc(db, 'users', user.uid, 'privacy', 'settings');
+    try {
+      await setDoc(settingsRef, { [key]: value }, { merge: true });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update setting');
+    }
+  };
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword) {
@@ -66,64 +103,97 @@ export default function PrivacySecurityScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView style={styles.container}>
+    <ThemedView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.container}>
         {/* Location */}
-        <View style={styles.card}>
-          <View style={styles.rowBetween}>
-            <View style={styles.row}>
+        <ThemedView style={[styles.card, { borderColor }]}>
+          <ThemedView style={styles.rowBetween}>
+            <ThemedView style={styles.row}>
               <Ionicons name="location" size={18} />
-              <Text style={styles.title}>Location Preference</Text>
-            </View>
-            <Switch value={locationPref} onValueChange={setLocationPref} />
-          </View>
-        </View>
+              <ThemedText style={styles.title}>Location Preference</ThemedText>
+            </ThemedView>
+            <Switch
+              value={locationPref}
+              onValueChange={(val) => {
+                setLocationPref(val);
+                updateSetting('locationPref', val);
+              }}
+            />
+          </ThemedView>
+        </ThemedView>
 
         {/* Profile */}
-        <View style={styles.card}>
-          <View style={styles.row}>
+        <ThemedView style={[styles.card, { borderColor }]}>
+          <ThemedView style={styles.row}>
             <Ionicons name="person-circle" size={18} />
-            <Text style={styles.title}>Profile Visibility</Text>
-          </View>
-          <View style={styles.rowBetween}>
-            <Text>Show My Profile To Nearby Donors</Text>
-            <Switch value={showProfile} onValueChange={setShowProfile} />
-          </View>
-          <View style={styles.rowBetween}>
-            <Text>Show My Request History</Text>
-            <Switch value={showRequests} onValueChange={setShowRequests} />
-          </View>
-          <View style={styles.rowBetween}>
-            <Text>Show My Donation History</Text>
-            <Switch value={showDonations} onValueChange={setShowDonations} />
-          </View>
-        </View>
+            <ThemedText style={styles.title}>Profile Visibility</ThemedText>
+          </ThemedView>
+          <ThemedView style={styles.rowBetween}>
+            <ThemedText>Show My Profile To Nearby Donors</ThemedText>
+            <Switch
+              value={showProfile}
+              onValueChange={(val) => {
+                setShowProfile(val);
+                updateSetting('showProfile', val);
+              }}
+            />
+          </ThemedView>
+          <ThemedView style={styles.rowBetween}>
+            <ThemedText>Show My Request History</ThemedText>
+            <Switch
+              value={showRequests}
+              onValueChange={(val) => {
+                setShowRequests(val);
+                updateSetting('showRequests', val);
+              }}
+            />
+          </ThemedView>
+          <ThemedView style={styles.rowBetween}>
+            <ThemedText>Show My Donation History</ThemedText>
+            <Switch
+              value={showDonations}
+              onValueChange={(val) => {
+                setShowDonations(val);
+                updateSetting('showDonations', val);
+              }}
+            />
+          </ThemedView>
+        </ThemedView>
 
         {/* Emergency */}
-        <View style={styles.card}>
-          <View style={styles.row}>
+        <ThemedView style={[styles.card, { borderColor }]}>
+          <ThemedView style={styles.row}>
             <Ionicons name="alert-circle" size={18} />
-            <Text style={styles.title}>Emergency Contact</Text>
-          </View>
-          <View style={styles.rowBetween}>
-            <Text>Show Details For Emergency Contact</Text>
-            <Switch value={showEmergencyContact} onValueChange={setShowEmergencyContact} />
-          </View>
-        </View>
+            <ThemedText style={styles.title}>Emergency Contact</ThemedText>
+          </ThemedView>
+          <ThemedView style={styles.rowBetween}>
+            <ThemedText>Show Details For Emergency Contact</ThemedText>
+            <Switch
+              value={showEmergencyContact}
+              onValueChange={(val) => {
+                setShowEmergencyContact(val);
+                updateSetting('showEmergencyContact', val);
+              }}
+            />
+          </ThemedView>
+        </ThemedView>
 
         {/* Password */}
-        <View style={styles.card}>
-          <View style={styles.row}>
+        <ThemedView style={[styles.card, { borderColor }]}>
+          <ThemedView style={styles.row}>
             <Ionicons name="key" size={18} />
-            <Text style={styles.title}>Password & Credentials</Text>
-          </View>
+            <ThemedText style={styles.title}>Password & Credentials</ThemedText>
+          </ThemedView>
 
           <TouchableOpacity
             style={styles.credRow}
             onPress={() => setShowChangePassword(!showChangePassword)}
           >
-            <Text>Change Password</Text>
-            <Ionicons name={showChangePassword ? 'chevron-up' : 'chevron-forward'} size={18} />
+            <ThemedText>Change Password</ThemedText>
+            <Ionicons
+              name={showChangePassword ? 'chevron-up' : 'chevron-forward'}
+              size={18}
+            />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -132,7 +202,7 @@ export default function PrivacySecurityScreen() {
               Alert.alert('Action Blocked', 'Use web version to change number/email')
             }
           >
-            <Text>Change Number/Email</Text>
+            <ThemedText>Change Number/Email</ThemedText>
             <Ionicons name="chevron-forward" size={18} />
           </TouchableOpacity>
 
@@ -142,17 +212,17 @@ export default function PrivacySecurityScreen() {
               Alert.alert('Action Blocked', 'Use web version to delete your account')
             }
           >
-            <Text>Delete My Account</Text>
+            <ThemedText>Delete My Account</ThemedText>
             <Ionicons name="chevron-forward" size={18} />
           </TouchableOpacity>
 
           {showChangePassword && (
-            <View style={{ marginTop: 10 }}>
+            <ThemedView style={{ marginTop: vs(10) }}>
               {user?.providerData[0]?.providerId !== 'password' ? (
-                <Text style={{ fontSize: 13, color: 'red' }}>
+                <ThemedText style={{ fontSize: ms(13), color: 'red' }}>
                   Your account is linked via {user?.providerData[0]?.providerId}. Please use web
                   version to update password.
-                </Text>
+                </ThemedText>
               ) : (
                 <>
                   <TextInput
@@ -174,117 +244,71 @@ export default function PrivacySecurityScreen() {
                     disabled={loading}
                     onPress={handleChangePassword}
                   >
-                    <Text style={styles.updateBtnText}>
+                    <ThemedText style={styles.updateBtnText}>
                       {loading ? 'Updating...' : 'Update Password'}
-                    </Text>
+                    </ThemedText>
                   </TouchableOpacity>
                 </>
               )}
-            </View>
+            </ThemedView>
           )}
-        </View>
+        </ThemedView>
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.navBar}>
-        <Tab icon="home" label="Home" path="/receiver/home" />
-        <Tab icon="medkit" label="Request" path="/receiver/request" />
-        <Tab icon="map" label="Camps" path="/receiver/camps" />
-        <Tab icon="settings" label="Settings" path="/receiver/settings" active />
-      </View>
-    </View>
-  );
-}
-
-type TabProps = {
-  icon: any;
-  label: string;
-  path: string;
-  active?: boolean;
-};
-
-function Tab({ icon, label, path, active }: TabProps) {
-  const router = useRouter();
-  return (
-    <TouchableOpacity style={styles.tabButton} onPress={() => router.push(path)}>
-      <Ionicons name={icon} size={22} color={active ? '#e53935' : '#888'} />
-      <Text style={[styles.label, active && { color: '#e53935' }]}>{label}</Text>
-    </TouchableOpacity>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#f5f5f5',
+  screen: {
     flex: 1,
-    padding: 16,
+  },
+  container: {
+    padding: ms(16),
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
+    borderRadius: ms(12),
+    padding: ms(14),
+    marginBottom: vs(16),
     borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  title: {
-    fontWeight: '700',
-    marginLeft: 8,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: vs(10),
   },
   rowBetween: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 6,
+    paddingVertical: vs(6),
   },
   credRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderTopColor: '#eee',
-    borderTopWidth: 1,
+    paddingVertical: vs(10),
+    borderTopColor: '#ccc',
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  title: {
+    fontWeight: '700',
+    marginLeft: s(8),
   },
   input: {
     backgroundColor: '#f1f1f1',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 10,
+    padding: ms(10),
+    borderRadius: ms(8),
+    marginTop: vs(10),
   },
   updateBtn: {
-    marginTop: 14,
+    marginTop: vs(14),
     backgroundColor: '#e53935',
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingVertical: vs(10),
+    borderRadius: ms(8),
     alignItems: 'center',
   },
   updateBtnText: {
     color: '#fff',
     fontWeight: '600',
-  },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: width,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    borderTopColor: '#eee',
-    borderTopWidth: 1,
-  },
-  tabButton: {
-    alignItems: 'center',
-  },
-  label: {
-    fontSize: 12,
-    color: '#444',
-    marginTop: 4,
   },
 });

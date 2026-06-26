@@ -1,279 +1,171 @@
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import {
-  collection,
-  doc,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-  updateDoc,
-  where
-} from 'firebase/firestore';
+import MessageButton from '@/components/MessageBtn';
+import { Stack, useRouter } from 'expo-router';
+import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
-  Dimensions,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
+import { ms, s, vs } from 'react-native-size-matters';
+import { ThemedCard, ThemedText, ThemedView } from '../../components/Themed';
 import { auth, db } from '../../firebase';
 
-const { width } = Dimensions.get('window');
-
-// Type for Firestore request document
-type BloodRequest = {
+type Request = {
+  id?: string;
   bloodGroup: string;
-  hospital?: string;
+  donorName?: string;
+  donorId?: string;
+  acceptedBy?: string;
+  number?: string;
+  location?: string;
   status: string;
   createdAt?: any;
 };
 
-export default function ReceiverTabs() {
+export default function ReceiverHome() {   // ✅ renamed to avoid tab root behavior
   const router = useRouter();
-  const [activeRequest, setActiveRequest] = useState<BloodRequest | null>(null);
+  const [activeRequest, setActiveRequest] = useState<Request | null>(null);
 
   useEffect(() => {
-    const fetchRequest = async () => {
-      const user = auth.currentUser;
-      if (!user) return;
-
-      try {
-        const q = query(
-          collection(db, 'bloodRequests'),
-          where('uid', '==', user.uid),
-          where('status', '==', 'pending'),
-          orderBy('createdAt', 'desc'),
-          limit(1)
-        );
-
-        const snapshot = await getDocs(q);
-
-        if (!snapshot.empty) {
-          const requestData = snapshot.docs[0].data() as BloodRequest;
-          setActiveRequest(requestData);
-        }
-      } catch (error) {
-        console.error('Failed to fetch request:', error);
-      }
-    };
-
-    fetchRequest();
-  }, []);
-
-  const handleCancel = async () => {
     const user = auth.currentUser;
     if (!user) return;
 
-    try {
-      const q = query(
-        collection(db, 'bloodRequests'),
-        where('uid', '==', user.uid),
-        where('status', '==', 'pending'),
-        orderBy('createdAt', 'desc'),
-        limit(1)
-      );
+    const q = query(
+      collection(db, 'requests'),
+      where('patientId', '==', user.uid),
+      where('status', 'in', ['pending', 'accepted']),
+      orderBy('createdAt', 'desc'),
+      limit(1)
+    );
 
-      const snapshot = await getDocs(q);
-
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       if (!snapshot.empty) {
-        const docRef = doc(db, 'bloodRequests', snapshot.docs[0].id);
-        await updateDoc(docRef, { status: 'cancelled' });
+        const docSnap = snapshot.docs[0];
+        const requestData = { id: docSnap.id, ...(docSnap.data() as Request) };
+
+        const donorUid = requestData.donorId || requestData.acceptedBy;
+        if (donorUid) {
+          try {
+            const donorDoc = await getDoc(doc(db, 'users', donorUid));
+            if (donorDoc.exists()) {
+              const donorData = donorDoc.data();
+              requestData.donorName = donorData.name || 'Unknown Donor';
+              requestData.number = donorData.number || '';
+            }
+          } catch (err) {
+            console.error('Error fetching donor data:', err);
+          }
+        }
+        setActiveRequest(requestData);
+      } else {
         setActiveRequest(null);
-        Alert.alert('Cancelled', 'Your request has been cancelled.');
       }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleCancel = async () => {
+    if (!activeRequest?.id) return;
+    try {
+      await updateDoc(doc(db, 'requests', activeRequest.id), { status: 'cancelled' });
+      Alert.alert('Cancelled', 'Your request has been cancelled.');
     } catch (error) {
       console.error('Cancel error:', error);
     }
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 140 }}>
-        <View style={styles.card}>
-          <Text style={styles.title}>🧠 Awareness Board</Text>
+    <>
+      <Stack.Screen options={{ headerShown: false }} />
+      <SafeAreaView style={{ flex: 1 }}>
+        {/* ✅ Outer container with paddingTop ensures content starts lower */}
+        <ThemedView style={styles.container}>
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent} 
+            showsVerticalScrollIndicator={false}
+          >
 
-          <Text style={styles.subHeading}>🔴 What to do after blood transfusion?</Text>
-          <Text style={styles.text}>• Rest for 24–48 hours.</Text>
-          <Text style={styles.text}>• Drink plenty of fluids.</Text>
-          <Text style={styles.text}>• Watch for fever, chills, or rash.</Text>
-          <Text style={styles.text}>• Report any dizziness or unusual symptoms to your doctor immediately.</Text>
+            {/* Awareness Board */}
+            <ThemedCard style={styles.card}>
+              <ThemedText type="title" style={styles.title}>🧠 Awareness Board</ThemedText>
 
-          <Text style={styles.subHeading}>🧬 Signs of blood deficiency (Anemia)</Text>
-          <Text style={styles.text}>• Constant fatigue or weakness</Text>
-          <Text style={styles.text}>• Pale skin or lips</Text>
-          <Text style={styles.text}>• Shortness of breath</Text>
-          <Text style={styles.text}>• Dizziness or rapid heartbeat</Text>
-          <Text style={styles.text}>• Cold hands and feet</Text>
+              <ThemedText type="subtitle" style={styles.subHeading}>🔴 After Blood Transfusion:</ThemedText>
+              <ThemedText style={styles.text}>• Rest for 24–48 hours.</ThemedText>
+              <ThemedText style={styles.text}>• Drink plenty of fluids.</ThemedText>
+              <ThemedText style={styles.text}>• Watch for fever, chills, or rash.</ThemedText>
+              <ThemedText style={styles.text}>• Report any unusual symptoms to your doctor.</ThemedText>
 
-          <Text style={styles.subHeading}>🆘 How to request urgent blood?</Text>
-          <Text style={styles.text}>• Go to Request Blood tab.</Text>
-          <Text style={styles.text}>• Fill in required details (blood group, urgency, hospital name).</Text>
-          <Text style={styles.text}>• Click Send Request.</Text>
-          <Text style={styles.text}>• Nearby verified donors will be notified instantly.</Text>
-        </View>
+              <ThemedText type="subtitle" style={styles.subHeading}>🧬 Signs of Anemia:</ThemedText>
+              <ThemedText style={styles.text}>• Constant fatigue or weakness</ThemedText>
+              <ThemedText style={styles.text}>• Pale skin or lips</ThemedText>
+              <ThemedText style={styles.text}>• Shortness of breath</ThemedText>
+              <ThemedText style={styles.text}>• Dizziness or rapid heartbeat</ThemedText>
+            </ThemedCard>
 
-        <View style={styles.requestCard}>
-          <Text style={styles.requestTitle}>Active Blood Request</Text>
+            {/* Request Status */}
+            <ThemedCard style={styles.requestCard}>
+              {activeRequest ? (
+                activeRequest.status === 'accepted' ? (
+                  <>
+                    <ThemedText style={styles.requestTitle}>✅ Request Accepted</ThemedText>
+                    <ThemedText style={styles.requestStatus}>Donor: {activeRequest.donorName}</ThemedText>
+                    <ThemedText style={styles.requestStatus}>Blood Group: {activeRequest.bloodGroup}</ThemedText>
 
-          {activeRequest ? (
-            <>
-              <Text style={styles.requestStatus}>🩸 Blood Grp {activeRequest.bloodGroup}</Text>
-              <Text style={styles.requestStatus}>📍 {activeRequest.hospital || 'Unknown Hospital'}</Text>
-              <Text style={[styles.requestStatus, { color: '#3366cc' }]}>
-                Status :-  {activeRequest.status === 'open' ? 'Waiting For Donor' : activeRequest.status}
-              </Text>
+                    <View style={styles.requestActions}>
+                      <MessageButton type="whatsapp" phone={activeRequest.number || ''} message="Hello, contacting via Rakth Rekha." />
+                      <MessageButton type="sms" phone={activeRequest.number || ''} message="Hello, contacting via Rakth Rekha." />
+                      <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
+                        <ThemedText style={styles.btnText}>Cancel</ThemedText>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <ThemedText style={styles.requestTitle}>🩸 Active Request</ThemedText>
+                    <ThemedText style={styles.requestStatus}>Blood Group: {activeRequest.bloodGroup}</ThemedText>
+                    <ThemedText style={styles.requestStatus}>📍 {activeRequest.location}</ThemedText>
+                    <View style={styles.requestActions}>
+                      <TouchableOpacity style={styles.viewBtn} onPress={() => router.push('/receiver/request')}>
+                        <ThemedText style={styles.btnText}>View</ThemedText>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
+                        <ThemedText style={styles.btnText}>Cancel</ThemedText>
+                      </TouchableOpacity>
+                    </View>
+                  </>
+                )
+              ) : (
+                <ThemedText style={{ fontStyle: 'italic', color: '#777' }}>No active request found.</ThemedText>
+              )}
+            </ThemedCard>
 
-              <View style={styles.requestActions}>
-                <TouchableOpacity
-                  style={styles.viewBtn}
-                  onPress={() => router.push('/receiver/request')}
-                >
-                  <Text style={styles.btnText}>View Request</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cancelBtn}
-                  onPress={handleCancel}
-                >
-                  <Text style={styles.btnText}>Cancel Request</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            <Text style={[styles.requestStatus, { fontStyle: 'italic', color: '#777' }]}>
-              No active request made.
-            </Text>
-          )}
-        </View>
-      </ScrollView>
-
-      <View style={styles.navBar}>
-        <TouchableOpacity style={styles.tabButton} onPress={() => router.push('/receiver/home')}>
-          <Ionicons name="home" size={24} color="#e53935" />
-          <Text style={styles.label}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabButton} onPress={() => router.push('/receiver/request')}>
-          <Ionicons name="medkit" size={24} color="#aaa" />
-          <Text style={styles.label}>Request</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabButton} onPress={() => router.push('/receiver/nearbydonor')}>
-          <Ionicons name="people" size={24} color="#aaa" />
-          <Text style={styles.label}>Donors</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabButton} onPress={() => router.push('/receiver/settings')}>
-          <Ionicons name="settings" size={24} color="#aaa" />
-          <Text style={styles.label}>Settings</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          </ScrollView>
+        </ThemedView>
+      </SafeAreaView>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: width,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    borderTopColor: '#eee',
-    borderTopWidth: 1,
-    zIndex: 10,
-  },
-  tabButton: {
-    alignItems: 'center',
-  },
-  label: {
-    fontSize: 12,
-    color: '#444',
-    marginTop: 4,
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 20,
-    marginTop: 80,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    shadowColor: '#999',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#e53935',
-    marginBottom: 12,
-  },
-  subHeading: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginTop: 12,
-    color: '#333',
-    marginBottom: 4,
-  },
-  text: {
-    fontSize: 14,
-    color: '#444',
-    marginBottom: 4,
-  },
-  requestCard: {
-    backgroundColor: '#f2f2f2',
-    borderRadius: 12,
-    padding: 16,
-    marginHorizontal: 20,
-    marginTop: 20,
-    shadowColor: '#999',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  requestTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 6,
-    color: '#222',
-  },
-  requestStatus: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 6,
-  },
-  requestActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 12,
-  },
-  viewBtn: {
-    flex: 1,
-    backgroundColor: '#43a047',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  cancelBtn: {
-    flex: 1,
-    backgroundColor: '#e53935',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  btnText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
+  container: { flex: 1, paddingTop: vs(20) },  // ✅ added paddingTop
+  scrollContent: { flexGrow: 1, padding: s(16), paddingBottom: vs(120) },
+
+  card: { borderRadius: ms(12), padding: ms(16), marginBottom: vs(20) },
+  title: { fontSize: ms(18), fontWeight: '700', marginBottom: vs(12) },
+  subHeading: { fontSize: ms(15), fontWeight: '600', marginTop: vs(10), marginBottom: vs(4) },
+  text: { fontSize: ms(13), marginBottom: vs(4) },
+
+  requestCard: { borderRadius: ms(12), padding: ms(16), marginBottom: vs(30) },
+  requestTitle: { fontSize: ms(16), fontWeight: '600', marginBottom: vs(6) },
+  requestStatus: { fontSize: ms(13), marginBottom: vs(6) },
+
+  requestActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: vs(12) },
+  viewBtn: { flex: 1, backgroundColor: '#43a047', paddingVertical: vs(10), borderRadius: ms(8), alignItems: 'center', marginRight: s(8) },
+  cancelBtn: { flex: 1, backgroundColor: '#d32f2f', paddingVertical: vs(10), borderRadius: ms(8), alignItems: 'center', marginLeft: s(4) },
+  btnText: { color: '#fff', fontWeight: '600', fontSize: ms(13) },
 });

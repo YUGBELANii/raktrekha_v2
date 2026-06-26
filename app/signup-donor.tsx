@@ -9,13 +9,16 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity
+  TouchableOpacity,
+  useColorScheme,
 } from 'react-native';
 import { auth, db } from '../firebase';
 
 export default function DonorSignUp() {
   const router = useRouter();
-  const { name, email, password } = useLocalSearchParams();
+  const { name, email, password , number } = useLocalSearchParams();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const [age, setAge] = useState('');
   const [bloodGroup, setBloodGroup] = useState('');
@@ -42,6 +45,7 @@ export default function DonorSignUp() {
         role: 'donor',
         name,
         email,
+        number,
         age,
         bloodGroup,
         location,
@@ -62,31 +66,64 @@ export default function DonorSignUp() {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Donor Details</Text>
+      <ScrollView
+        contentContainerStyle={[
+          styles.container,
+          { backgroundColor: isDark ? '#121212' : '#fff' },
+        ]}
+      >
+        <Text style={[styles.title, { color: '#e53935' }]}>Donor Details</Text>
 
         <TextInput
           placeholder="Age"
+          placeholderTextColor={isDark ? '#aaa' : '#666'}
           keyboardType="numeric"
-          style={styles.input}
+          style={[
+            styles.input,
+            {
+              backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2',
+              color: isDark ? '#fff' : '#000',
+            },
+          ]}
           value={age}
           onChangeText={setAge}
         />
         <TextInput
           placeholder="Blood Group (e.g. A+, O-, AB+)"
-          style={styles.input}
+          placeholderTextColor={isDark ? '#aaa' : '#666'}
+          style={[
+            styles.input,
+            {
+              backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2',
+              color: isDark ? '#fff' : '#000',
+            },
+          ]}
           value={bloodGroup}
           onChangeText={setBloodGroup}
         />
         <TextInput
           placeholder="City or Location"
-          style={styles.input}
+          placeholderTextColor={isDark ? '#aaa' : '#666'}
+          style={[
+            styles.input,
+            {
+              backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2',
+              color: isDark ? '#fff' : '#000',
+            },
+          ]}
           value={location}
           onChangeText={setLocation}
         />
         <TextInput
           placeholder="Availability (e.g. Weekends, Anytime)"
-          style={styles.input}
+          placeholderTextColor={isDark ? '#aaa' : '#666'}
+          style={[
+            styles.input,
+            {
+              backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2',
+              color: isDark ? '#fff' : '#000',
+            },
+          ]}
           value={availability}
           onChangeText={setAvailability}
         />
@@ -102,19 +139,16 @@ export default function DonorSignUp() {
 const styles = StyleSheet.create({
   container: {
     padding: 24,
-    backgroundColor: '#fff',
     flexGrow: 1,
     justifyContent: 'center',
   },
   title: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#e53935',
     marginBottom: 24,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: '#f2f2f2',
     padding: 14,
     borderRadius: 10,
     marginBottom: 14,

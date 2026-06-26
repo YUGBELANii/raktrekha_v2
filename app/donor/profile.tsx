@@ -5,20 +5,26 @@ import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
+  Platform,
+  SafeAreaView,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  useColorScheme,
   View,
 } from 'react-native';
+import { ms, s, vs } from 'react-native-size-matters';
 import { auth, db } from '../../firebase';
 
-const { width } = Dimensions.get('window');
-
 export default function DonorProfileScreen() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState({
     fullName: '',
@@ -26,6 +32,8 @@ export default function DonorProfileScreen() {
     city: '',
     emergencyContact: '',
     preferredHospital: '',
+    age: '',
+    bloodGroup: '',
   });
   const [originalData, setOriginalData] = useState<any>(null);
 
@@ -77,123 +85,113 @@ export default function DonorProfileScreen() {
 
   if (loading) {
     return (
-      <View style={[styles.center, { backgroundColor: '#f3f3f3' }]}>
-        <ActivityIndicator size="large" color="#000" />
-        <Text style={{ marginTop: 10, color: '#000' }}>Loading profile...</Text>
+      <View style={[styles.center, { backgroundColor: isDark ? '#000' : '#f3f3f3' }]}>
+        <ActivityIndicator size="large" color={isDark ? '#fff' : '#000'} />
+        <Text style={{ marginTop: vs(10), color: isDark ? '#fff' : '#000', fontSize: ms(13) }}>
+          Loading profile...
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: '#f3f3f3' }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <View style={[styles.coverBox, { backgroundColor: '#eee' }]}>
-          <Text style={[styles.coverText, { color: '#444' }]}>Profile Cover</Text>
-          <View style={styles.avatar}>
-            <Ionicons name="person-circle-outline" size={64} color="#aaa" />
+    <SafeAreaView
+      style={{
+        flex: 1,
+        backgroundColor: isDark ? '#000' : '#f3f3f3',
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+      }}
+    >
+      <ScrollView contentContainerStyle={{ paddingBottom: vs(120) }}>
+        <View
+          style={[
+            styles.coverBox,
+            {
+              backgroundColor: isDark ? '#111' : '#eee',
+              borderWidth: ms(2),
+              borderColor: isDark ? '#333' : '#ccc',
+            },
+          ]}
+        >
+          <Text style={[styles.coverText, { color: isDark ? '#fff' : '#444' }]}>
+            Profile Cover
+          </Text>
+          <View
+            style={[
+              styles.avatar,
+              {
+                backgroundColor: isDark ? '#1e1e1e' : '#fff',
+                borderWidth: ms(2),
+                borderColor: isDark ? '#666' : '#ddd',
+              },
+            ]}
+          >
+            <Ionicons name="person-circle-outline" size={ms(64)} color={isDark ? '#888' : '#aaa'} />
           </View>
         </View>
 
-        <View style={[styles.form, { backgroundColor: '#fff', borderColor: '#ddd' }]}>
-         <LabelInput
-  label="Full Name"
-  value={userData.fullName}
-  onChangeText={(v: string) => handleChange('fullName', v)}
-/>
+        <View
+          style={[
+            styles.form,
+            {
+              backgroundColor: isDark ? '#111' : '#fff',
+              borderColor: isDark ? '#333' : '#ddd',
+            },
+          ]}
+        >
+          {/* Non-editable Fields */}
+          <LabelInput label="Age" value={userData.age} isDark={isDark} editable={false} />
+          <LabelInput label="Blood Group" value={userData.bloodGroup} isDark={isDark} editable={false} />
 
-<LabelInput
-  label="Bio"
-  value={userData.bio}
-  onChangeText={(v: string) => handleChange('bio', v)}
-  multiline
-/>
-
-<LabelInput
-  label="City"
-  value={userData.city}
-  onChangeText={(v: string) => handleChange('city', v)}
-/>
-
-<LabelInput
-  label="Emergency Contact"
-  value={userData.emergencyContact}
-  onChangeText={(v: string) => handleChange('emergencyContact', v)}
-/>
-
-<LabelInput
-  label="Preferred Hospital"
-  value={userData.preferredHospital}
-  onChangeText={(v: string) => handleChange('preferredHospital', v)}
-/>
-
+          {/* Editable Fields */}
+          <LabelInput label="Full Name" value={userData.fullName} onChangeText={(v: string) => handleChange('fullName', v)} isDark={isDark} />
+          <LabelInput label="Bio" value={userData.bio} onChangeText={(v: string) => handleChange('bio', v)} multiline isDark={isDark} />
+          <LabelInput label="City" value={userData.city} onChangeText={(v: string) => handleChange('city', v)} isDark={isDark} />
+          <LabelInput label="Emergency Contact" value={userData.emergencyContact} onChangeText={(v: string) => handleChange('emergencyContact', v)} isDark={isDark} />
+          <LabelInput label="Preferred Hospital" value={userData.preferredHospital} onChangeText={(v: string) => handleChange('preferredHospital', v)} isDark={isDark} />
 
           <TouchableOpacity
-            style={[
-              styles.saveButton,
-              (!userData.fullName || loading) && { backgroundColor: '#888' },
-            ]}
+            style={[styles.saveButton, (!userData.fullName || loading) && { backgroundColor: '#888' }]}
             onPress={handleUpdate}
             disabled={!userData.fullName || loading}
           >
-            <Text style={{ color: '#fff', fontWeight: '600' }}>Edit Profile</Text>
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: ms(14) }}>Edit Profile</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Bottom Nav */}
-      <View style={[styles.navBar, { backgroundColor: '#fff', borderTopColor: '#eee' }]}>
-        <Tab icon="home" label="Home" path="/donor/home" />
-        <Tab icon="medkit" label="Nearby Request" path="/donor/request" />
-        <Tab icon="map" label="Nearby Camps" path="/donor/camps" />
-        <Tab icon="settings" label="Settings" path="/donor/settings" />
-      </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 function LabelInput({
   label,
+  isDark,
   ...props
 }: {
   label: string;
+  isDark: boolean;
   [key: string]: any;
 }) {
   return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={[styles.label, { color: '#444' }]}>{label}</Text>
+    <View style={{ marginBottom: vs(14) }}>
+      <Text style={[styles.label, { color: isDark ? '#ccc' : '#444' }]}>{label}</Text>
       <TextInput
         style={[
           styles.input,
           {
-            backgroundColor: '#f9f9f9',
-            color: '#000',
-            borderColor: '#ccc',
+            backgroundColor: isDark ? '#1e1e1e' : '#f9f9f9',
+            color: isDark ? '#fff' : '#000',
+            borderColor: isDark ? '#444' : '#ccc',
           },
-          props.multiline && { height: 80, textAlignVertical: 'top' },
+          props.multiline && { height: vs(80), textAlignVertical: 'top' },
+          props.editable === false && { opacity: 0.6 },
         ]}
+        editable={props.editable !== false}
         autoCapitalize="sentences"
-        placeholderTextColor="#aaa"
+        placeholderTextColor={isDark ? '#888' : '#aaa'}
         {...props}
       />
     </View>
-  );
-}
-
-function Tab({
-  icon,
-  label,
-  path,
-}: {
-  icon: any;
-  label: string;
-  path: string;
-}) {
-  const router = useRouter();
-  return (
-    <TouchableOpacity style={styles.tabButton} onPress={() => router.push(path)}>
-      <Ionicons name={icon} size={24} color="#aaa" />
-      <Text style={[styles.tabLabel, { color: '#444' }]}>{label}</Text>
-    </TouchableOpacity>
   );
 }
 
@@ -201,19 +199,20 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   coverBox: {
-    height: 120,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    height: vs(120),
+    borderTopLeftRadius: ms(20),
+    borderTopRightRadius: ms(20),
     alignItems: 'center',
     justifyContent: 'center',
+    marginHorizontal: s(16),
+    marginTop: vs(16),
   },
-  coverText: { fontWeight: '600' },
+  coverText: { fontWeight: '600', fontSize: ms(14) },
   avatar: {
-    marginTop: -30,
+    marginTop: -vs(30),
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 50,
-    padding: 4,
+    borderRadius: ms(50),
+    padding: s(4),
     elevation: 5,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -221,47 +220,29 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
   },
   form: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 14,
-    padding: 16,
+    marginHorizontal: s(16),
+    marginTop: vs(16),
+    borderRadius: ms(14),
+    padding: ms(16),
     borderWidth: 1,
   },
   label: {
     fontWeight: '600',
-    fontSize: 13,
-    marginBottom: 4,
+    fontSize: ms(13),
+    marginBottom: vs(4),
   },
   input: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
+    borderRadius: ms(10),
+    paddingHorizontal: s(12),
+    paddingVertical: vs(8),
+    fontSize: ms(14),
   },
   saveButton: {
     backgroundColor: '#EF4444',
-    marginTop: 16,
-    padding: 12,
+    marginTop: vs(16),
+    paddingVertical: vs(12),
     alignItems: 'center',
-    borderRadius: 10,
-  },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: width,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    zIndex: 10,
-  },
-  tabButton: {
-    alignItems: 'center',
-  },
-  tabLabel: {
-    fontSize: 12,
-    marginTop: 4,
+    borderRadius: ms(10),
   },
 });

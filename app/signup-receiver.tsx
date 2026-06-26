@@ -9,18 +9,21 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  TouchableOpacity
+  TouchableOpacity,
+  useColorScheme
 } from 'react-native';
 import { auth, db } from '../firebase';
 
 export default function ReceiverSignUp() {
   const router = useRouter();
-  const { name, email, password } = useLocalSearchParams();
+  const { name, email, password , number} = useLocalSearchParams();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const [bloodGroup, setBloodGroup] = useState('');
   const [condition, setCondition] = useState('');
   const [urgency, setUrgency] = useState('');
-  const [age, setAge] = useState(''); // ✅ new state
+  const [age, setAge] = useState('');
 
   const handleReceiverSignUp = async () => {
     if (!bloodGroup || !condition || !urgency || !age) {
@@ -42,7 +45,8 @@ export default function ReceiverSignUp() {
         role: 'patient',
         name,
         email,
-        age, // ✅ added to Firestore
+        number,
+        age,
         bloodGroup,
         condition,
         urgency,
@@ -50,7 +54,7 @@ export default function ReceiverSignUp() {
       });
 
       alert('Receiver account created successfully!');
-      router.push('/receiverhome');
+      router.push('/receiver/home');
     } catch (error: any) {
       console.error('Receiver Sign Up Error:', error);
       alert(error.message);
@@ -62,31 +66,35 @@ export default function ReceiverSignUp() {
       style={{ flex: 1 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Patient Details</Text>
+      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
+        <Text style={[styles.title, { color: '#e53935' }]}>Patient Details</Text>
 
         <TextInput
           placeholder="Age"
+          placeholderTextColor={isDark ? '#aaa' : '#666'}
           keyboardType="numeric"
-          style={styles.input}
+          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
           value={age}
           onChangeText={setAge}
         />
         <TextInput
           placeholder="Blood Group (e.g. A+, B-, AB+)"
-          style={styles.input}
+          placeholderTextColor={isDark ? '#aaa' : '#666'}
+          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
           value={bloodGroup}
           onChangeText={setBloodGroup}
         />
         <TextInput
           placeholder="Medical Condition (e.g. Thalassemia, Surgery, Accident)"
-          style={styles.input}
+          placeholderTextColor={isDark ? '#aaa' : '#666'}
+          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
           value={condition}
           onChangeText={setCondition}
         />
         <TextInput
           placeholder="Urgency (e.g. Immediate, Within 2 Days)"
-          style={styles.input}
+          placeholderTextColor={isDark ? '#aaa' : '#666'}
+          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
           value={urgency}
           onChangeText={setUrgency}
         />
@@ -102,19 +110,16 @@ export default function ReceiverSignUp() {
 const styles = StyleSheet.create({
   container: {
     padding: 24,
-    backgroundColor: '#fff',
     flexGrow: 1,
     justifyContent: 'center',
   },
   title: {
     fontSize: 26,
     fontWeight: 'bold',
-    color: '#e53935',
     marginBottom: 24,
     textAlign: 'center',
   },
   input: {
-    backgroundColor: '#f2f2f2',
     padding: 14,
     borderRadius: 10,
     marginBottom: 14,

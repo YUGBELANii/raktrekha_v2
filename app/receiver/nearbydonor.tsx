@@ -1,37 +1,52 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Dimensions,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   TouchableOpacity,
-  View,
+  useColorScheme,
 } from 'react-native';
+import { Button, Menu, Provider as PaperProvider } from 'react-native-paper';
+import { ThemedText, ThemedView } from '../../components/Themed';
 import { db } from '../../firebase';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { width } = Dimensions.get('window');
 const bloodGroups = ['All', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 export default function NearbyDonorsScreen() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const [donors, setDonors] = useState<any[]>([]);
   const [selectedGroup, setSelectedGroup] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilter, setShowFilter] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   useEffect(() => {
     const fetchDonors = async () => {
       try {
-        const querySnapshot = await getDocs(collection(db, 'donors'));
-        const donorList = querySnapshot.docs.map((doc) => doc.data());
+        const q = query(collection(db, 'users'), where('role', '==', 'donor'));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          console.log('No donor users found in the database.');
+        }
+
+        const donorList = querySnapshot.docs.map((doc) => {
+          console.log('Fetched donor:', doc.data());
+          return doc.data();
+        });
+
         setDonors(donorList);
       } catch (error) {
         console.error('Error fetching donors:', error);
@@ -52,81 +67,91 @@ export default function NearbyDonorsScreen() {
   });
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 140, paddingHorizontal: 20 }}>
-        <Text style={styles.header}>Nearby Donors</Text>
+    <PaperProvider>
+      <ThemedView style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}>
+          <ThemedText style={styles.header}>Nearby Donors</ThemedText>
 
-        {/* 🔍 Search + Filter Toggle */}
-        <View style={styles.searchRow}>
-          <TextInput
-            placeholder="Search by name or city"
-            style={styles.searchInput}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-          <TouchableOpacity onPress={() => setShowFilter(!showFilter)}>
-            <Ionicons name="filter" size={24} color="#e53935" style={styles.filterIcon} />
-          </TouchableOpacity>
-        </View>
+          {/* 🔍 Search + Filter Toggle */}
+          <ThemedView style={styles.searchRow}>
+            <TextInput
+              placeholder="Search by name or city"
+              placeholderTextColor={isDark ? '#aaa' : '#666'}
+              style={[
+                styles.searchInput,
+                {
+                  backgroundColor: isDark ? '#333' : '#f2f2f2',
+                  color: isDark ? '#fff' : '#000',
+                },
+              ]}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+            <TouchableOpacity onPress={() => setShowFilter(!showFilter)}>
+              <Ionicons name="filter" size={24} color="#e53935" style={styles.filterIcon} />
+            </TouchableOpacity>
+          </ThemedView>
 
-        {/* 🔽 Blood Group Picker Toggle */}
-        {showFilter && (
-          <View style={styles.pickerWrapper}>
-            <Picker
-              selectedValue={selectedGroup}
-              onValueChange={(value) => setSelectedGroup(value)}
-              style={styles.picker}
-            >
-              {bloodGroups.map((group) => (
-                <Picker.Item key={group} label={group} value={group} />
-              ))}
-            </Picker>
-          </View>
-        )}
+          {/* 🔽 Blood Group Dropdown */}
+          {showFilter && (
+            <ThemedView style={{ marginBottom: 10 }}>
+              <Menu
+                visible={menuVisible}
+                onDismiss={() => setMenuVisible(false)}
+                anchor={
+                  <Button
+                    mode="outlined"
+                    onPress={() => setMenuVisible(true)}
+                    textColor={isDark ? '#fff' : '#000'}
+                    buttonColor={isDark ? '#444' : '#f2f2f2'}
+                  >
+                    {selectedGroup}
+                  </Button>
+                }
+                contentStyle={{ backgroundColor: isDark ? '#333' : '#fff' }}
+              >
+                {bloodGroups.map((group) => (
+                  <Menu.Item
+                    key={group}
+                    onPress={() => {
+                      setSelectedGroup(group);
+                      setMenuVisible(false);
+                    }}
+                    title={group}
+                    titleStyle={{ color: isDark ? '#fff' : '#000' }}
+                  />
+                ))}
+              </Menu>
+            </ThemedView>
+          )}
 
-        {/* 🔄 Loading State */}
-        {loading ? (
-          <ActivityIndicator size="large" color="#e53935" style={{ marginTop: 40 }} />
-        ) : filteredDonors.length === 0 ? (
-          <Text style={styles.noDonors}>No donors found.</Text>
-        ) : (
-          filteredDonors.map((donor, index) => (
-            <View key={index} style={styles.card}>
-              <Text style={styles.name}>{donor.name}</Text>
-              <Text>Blood Group: {donor.bloodGroup}</Text>
-              <Text>Phone: {donor.phone}</Text>
-              <Text>City: {donor.city}</Text>
-              <TouchableOpacity style={styles.contactBtn}>
-                <Text style={styles.btnText}>Contact</Text>
-              </TouchableOpacity>
-            </View>
-          ))
-        )}
-      </ScrollView>
-
-      {/* 🔻 Bottom Navigation */}
-      <View style={styles.navBar}>
-        <TouchableOpacity style={styles.tabButton} onPress={() => router.push('/receiver/home')}>
-          <Ionicons name="home" size={24} color="#aaa" />
-          <Text style={styles.labelTab}>Home</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabButton} onPress={() => router.push('/receiver/request')}>
-          <Ionicons name="medkit" size={24} color="#aaa" />
-          <Text style={styles.labelTab}>Request</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabButton}>
-          <Ionicons name="people" size={24} color="#e53935" />
-          <Text style={styles.labelTab}>Donors</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabButton} onPress={() => router.push('/receiver/settings')}>
-          <Ionicons name="settings" size={24} color="#aaa" />
-          <Text style={styles.labelTab}>Settings</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+          {/* 🔄 Loading / No Donors / List */}
+          {loading ? (
+            <ActivityIndicator size="large" color="#e53935" style={{ marginTop: 40 }} />
+          ) : filteredDonors.length === 0 ? (
+            <ThemedText style={styles.noDonors}>No donors found.</ThemedText>
+          ) : (
+            filteredDonors.map((donor, index) => (
+              <ThemedView
+                key={index}
+                style={[
+                  styles.card,
+                  { backgroundColor: isDark ? '#2a2a2a' : '#fff0f0' },
+                ]}
+              >
+                <ThemedText style={styles.name}>{donor.name}</ThemedText>
+                <ThemedText>Blood Group: {donor.bloodGroup}</ThemedText>
+                <ThemedText>Phone: {donor.number}</ThemedText>
+                <ThemedText>City: {donor.location}</ThemedText>
+                <TouchableOpacity style={styles.contactBtn}>
+                  <ThemedText style={styles.btnText}>Contact</ThemedText>
+                </TouchableOpacity>
+              </ThemedView>
+            ))
+          )}
+        </ScrollView>
+      </ThemedView>
+    </PaperProvider>
   );
 }
 
@@ -145,7 +170,6 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    backgroundColor: '#f2f2f2',
     borderRadius: 8,
     paddingHorizontal: 12,
     height: 40,
@@ -154,17 +178,7 @@ const styles = StyleSheet.create({
   filterIcon: {
     marginLeft: 12,
   },
-  pickerWrapper: {
-    backgroundColor: '#f9f9f9',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 10,
-  },
-  picker: {
-    height: 44,
-  },
   card: {
-    backgroundColor: '#fff0f0',
     marginTop: 14,
     borderRadius: 10,
     padding: 16,
@@ -178,7 +192,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
-    color: '#222',
   },
   contactBtn: {
     marginTop: 10,
@@ -196,24 +209,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 15,
     color: '#888',
-  },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    width: width,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  tabButton: {
-    alignItems: 'center',
-  },
-  labelTab: {
-    fontSize: 12,
-    color: '#444',
-    marginTop: 4,
   },
 });

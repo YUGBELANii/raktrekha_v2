@@ -1,18 +1,12 @@
-import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { getAuth } from 'firebase/auth';
-import { Timestamp, collection, getDocs } from 'firebase/firestore';
+import { Timestamp, collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import {
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
+import { ThemedText, ThemedView, useThemeColor } from '../../components/Themed';
 import { db } from '../../firebase';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { width } = Dimensions.get('window');
 
 type Donation = {
@@ -26,21 +20,38 @@ type Donation = {
 
 export default function DonationHistoryScreen() {
   const user = getAuth().currentUser;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [donationCount, setDonationCount] = useState(0);
 
   const fetchHistory = async () => {
     try {
       if (!user) return;
-      const historyRef = collection(db, 'users', user.uid, 'donations');
-      const snapshot = await getDocs(historyRef);
 
-      const data: Donation[] = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as Donation[];
+      // ✅ Fetch completed requests where donor is the logged-in user
+      const q = query(
+        collection(db, 'requests'),
+        where('acceptedBy', '==', user.uid),
+        where('status', '==', 'completed')
+      );
 
+      const snapshot = await getDocs(q);
+
+      const data: Donation[] = snapshot.docs.map(doc => {
+        const d = doc.data();
+        return {
+          id: doc.id,
+          location: d.hospital || d.location || 'Unknown Hospital',
+          type: d.bloodType || d.type || 'Blood Donation',
+          receiver: d.name || 'Patient',
+          status: d.status || 'Completed',
+          date: d.completedAt || d.createdAt || '',
+        };
+      });
+
+      // ✅ Sort by date
       const sorted = data.sort((a, b) => {
         const dateA = a.date instanceof Timestamp ? a.date.toDate() : new Date(a.date || '');
         const dateB = b.date instanceof Timestamp ? b.date.toDate() : new Date(b.date || '');
@@ -48,8 +59,9 @@ export default function DonationHistoryScreen() {
       });
 
       setDonations(sorted);
+      setDonationCount(sorted.length);
     } catch (err) {
-      console.error('Failed to fetch history:', err);
+      console.error('Failed to fetch donation history:', err);
     } finally {
       setLoading(false);
     }
@@ -57,147 +69,73 @@ export default function DonationHistoryScreen() {
 
   useEffect(() => {
     fetchHistory();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatDate = (timestamp: Timestamp | string | undefined): string => {
     if (!timestamp) return 'N/A';
-    let date: Date;
-
     try {
-      date =
-        timestamp instanceof Timestamp
-          ? timestamp.toDate()
-          : new Date(timestamp);
-    } catch (e) {
+      const date =
+        timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString() + ' at ' +
+             date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch {
       return 'Invalid Date';
     }
-
-    return (
-      date.toLocaleDateString() +
-      ' at ' +
-      date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    );
   };
 
+  const background = useThemeColor({}, 'background');
+  const cardBg = useThemeColor({}, 'card');
+  const text = useThemeColor({}, 'text');
+
   return (
-    <View style={styles.container}>
+    <ThemedView style={[styles.container, { backgroundColor: background }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <Text style={styles.header}>Your Donation History</Text>
+        <ThemedText style={styles.header}>Your Donation History</ThemedText>
+
+        {!loading && (
+          <ThemedText style={styles.countText}>
+            🩸 You have donated blood <ThemedText style={{ fontWeight: '700' }}>{donationCount}</ThemedText> time(s)
+          </ThemedText>
+        )}
 
         {loading ? (
-          <Text style={styles.infoText}>Loading...</Text>
+          <ThemedText style={styles.infoText}>Loading...</ThemedText>
         ) : donations.length === 0 ? (
-          <Text style={styles.infoText}>No donations recorded yet.</Text>
+          <ThemedText style={styles.infoText}>No donations recorded yet.</ThemedText>
         ) : (
           donations.map((donation, index) => (
-            <View key={donation.id || index} style={styles.card}>
-              <Text style={styles.label}>🏥 Location:</Text>
-              <Text style={styles.value}>{donation.location || 'Not specified'}</Text>
+            <View key={donation.id || index} style={[styles.card, { backgroundColor: cardBg, borderColor: text }]}>
+              <ThemedText style={styles.label}>🏥 Location:</ThemedText>
+              <ThemedText style={styles.value}>{donation.location}</ThemedText>
 
-              <Text style={styles.label}>📅 Date & Time:</Text>
-              <Text style={styles.value}>{formatDate(donation.date)}</Text>
+              <ThemedText style={styles.label}>📅 Date & Time:</ThemedText>
+              <ThemedText style={styles.value}>{formatDate(donation.date)}</ThemedText>
 
-              <Text style={styles.label}>💉 Type:</Text>
-              <Text style={styles.value}>{donation.type || 'N/A'}</Text>
+              <ThemedText style={styles.label}>💉 Type:</ThemedText>
+              <ThemedText style={styles.value}>{donation.type}</ThemedText>
 
-              {donation.receiver && (
-                <>
-                  <Text style={styles.label}>👤 Receiver:</Text>
-                  <Text style={styles.value}>{donation.receiver}</Text>
-                </>
-              )}
+              <ThemedText style={styles.label}>👤 Receiver:</ThemedText>
+              <ThemedText style={styles.value}>{donation.receiver}</ThemedText>
 
-              <Text style={styles.label}>✅ Status:</Text>
-              <Text
-                style={[
-                  styles.value,
-                  {
-                    color:
-                      donation.status === 'Completed'
-                        ? 'green'
-                        : donation.status === 'Pending'
-                        ? '#f90'
-                        : '#333',
-                  },
-                ]}
-              >
-                {donation.status || 'Unknown'}
-              </Text>
+              <ThemedText style={[styles.label, { marginTop: 10 }]}>✅ Status:</ThemedText>
+              <ThemedText style={[styles.value, { color: 'green' }]}>
+                Completed
+              </ThemedText>
             </View>
           ))
         )}
       </ScrollView>
-
-      <View style={styles.navBar}>
-        <Tab icon="home" label="Home" path="/donor/home" />
-        <Tab icon="medkit" label="Nearby Request" path="/donor/request" />
-        <Tab icon="map" label="Nearby Camps" path="/donor/camps" />
-        <Tab icon="settings" label="Settings" path="/donor/settings" />
-      </View>
-    </View>
-  );
-}
-
-function Tab({ icon, label, path, active }: any) {
-  const router = useRouter();
-  return (
-    <TouchableOpacity style={styles.tabButton} onPress={() => router.push(path)}>
-      <Ionicons name={icon} size={24} color={active ? '#e53935' : '#aaa'} />
-      <Text style={[styles.label, active && { color: '#e53935' }]}>{label}</Text>
-    </TouchableOpacity>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#f3f3f3',
-    flex: 1,
-  },
-  header: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 16,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  infoText: {
-    textAlign: 'center',
-    marginTop: 30,
-    color: '#666',
-  },
-  card: {
-    backgroundColor: '#fff',
-    padding: 14,
-    margin: 16,
-    borderRadius: 12,
-    borderColor: '#ddd',
-    borderWidth: 1,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 6,
-    color: '#333',
-  },
-  value: {
-    fontSize: 14,
-    marginTop: 2,
-    color: '#111',
-  },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: width,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    borderTopColor: '#eee',
-    borderTopWidth: 1,
-    zIndex: 10,
-  },
-  tabButton: {
-    alignItems: 'center',
-  },
+  container: { flex: 1 },
+  header: { fontSize: 18, fontWeight: '700', marginTop: 16, marginBottom: 4, textAlign: 'center' },
+  countText: { textAlign: 'center', fontSize: 15, marginBottom: 10, color: '#e53935' },
+  infoText: { textAlign: 'center', marginTop: 30, opacity: 0.6 },
+  card: { padding: 14, margin: 16, borderRadius: 12, borderWidth: 1 },
+  label: { fontSize: 13, fontWeight: '600', marginTop: 6 },
+  value: { fontSize: 14, marginTop: 2 },
 });

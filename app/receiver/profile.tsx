@@ -9,22 +9,28 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useColorScheme,
   View,
 } from 'react-native';
 import { auth, db } from '../../firebase';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { width } = Dimensions.get('window');
 
 export default function ReceiverProfileScreen() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const user = auth.currentUser;
   const [editable, setEditable] = useState(false);
   const [profile, setProfile] = useState({
     name: '',
     bio: '',
     city: '',
-    emergencyContact: '',
-    hospital: '',
+    number: '',
+    location: '',
     bloodGroup: 'A+',
     age: '22',
   });
@@ -35,6 +41,7 @@ export default function ReceiverProfileScreen() {
       if (docSnap.exists()) setProfile((prev) => ({ ...prev, ...docSnap.data() }));
     });
     return unsub;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUpdate = async () => {
@@ -44,187 +51,193 @@ export default function ReceiverProfileScreen() {
   };
 
   return (
-    <View style={{ flex: 1 }}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.card}>
-          <View style={styles.coverImage}>
-            <Text style={styles.coverText}>Profile Cover</Text>
+    <View style={[styles.container, { backgroundColor: isDark ? '#000' : '#f3f3f3' }]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
+        {/* Cover */}
+        <View
+          style={[
+            styles.coverBox,
+            {
+              backgroundColor: isDark ? '#111' : '#eee',
+              borderColor: isDark ? '#333' : '#ccc',
+            },
+          ]}
+        >
+          <Text style={[styles.coverText, { color: isDark ? '#fff' : '#444' }]}>Profile Cover</Text>
+          <View
+            style={[
+              styles.avatar,
+              {
+                backgroundColor: isDark ? '#1e1e1e' : '#fff',
+                borderColor: isDark ? '#666' : '#ddd',
+              },
+            ]}
+          >
+            <Ionicons name="person-circle-outline" size={64} color={isDark ? '#888' : '#aaa'} />
           </View>
+        </View>
 
-          <View style={styles.avatarContainer}>
-            <Ionicons name="person-circle-outline" size={60} color="#555" />
-          </View>
+        {/* Badges */}
+        <View style={styles.badges}>
+          <Text style={[styles.badge, { backgroundColor: isDark ? '#333' : '#eee', color: isDark ? '#fff' : '#333' }]}>
+            Age: {profile.age}
+          </Text>
+          <Text style={[styles.badge, { backgroundColor: isDark ? '#333' : '#eee', color: isDark ? '#fff' : '#333' }]}>
+            Blood Group: {profile.bloodGroup}
+          </Text>
+        </View>
 
-          <View style={styles.badges}>
-            <Text style={styles.badge}>Age: {profile.age}</Text>
-            <Text style={styles.badge}>Blood Group: {profile.bloodGroup}</Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              value={profile.name}
-              editable={editable}
-              onChangeText={(val) => setProfile({ ...profile, name: val })}
-            />
-
-            <Text style={styles.label}>Bio</Text>
-            <TextInput
-              style={[styles.input, { height: 60 }]}
-              multiline
-              value={profile.bio}
-              editable={editable}
-              onChangeText={(val) => setProfile({ ...profile, bio: val })}
-            />
-
-            <Text style={styles.label}>City</Text>
-            <TextInput
-              style={styles.input}
-              value={profile.city}
-              editable={editable}
-              onChangeText={(val) => setProfile({ ...profile, city: val })}
-            />
-
-            <Text style={styles.label}>Emergency Contact</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="phone-pad"
-              value={profile.emergencyContact}
-              editable={editable}
-              onChangeText={(val) => setProfile({ ...profile, emergencyContact: val })}
-            />
-
-            <Text style={styles.label}>Preferred Hospital</Text>
-            <TextInput
-              style={styles.input}
-              value={profile.hospital}
-              editable={editable}
-              onChangeText={(val) => setProfile({ ...profile, hospital: val })}
-            />
-          </View>
+        {/* Form */}
+        <View
+          style={[
+            styles.form,
+            {
+              backgroundColor: isDark ? '#111' : '#fff',
+              borderColor: isDark ? '#333' : '#ddd',
+            },
+          ]}
+        >
+          <LabelInput
+            label="Full Name"
+            value={profile.name}
+            onChangeText={(val: string) => setProfile({ ...profile, name: val })}
+            editable={editable}
+            isDark={isDark}
+          />
+          <LabelInput
+            label="Bio"
+            value={profile.bio}
+            onChangeText={(val: string) => setProfile({ ...profile, bio: val })}
+            editable={editable}
+            isDark={isDark}
+            multiline
+          />
+          <LabelInput
+            label="City"
+            value={profile.location}
+            onChangeText={(val: string) => setProfile({ ...profile, city: val })}
+            editable={editable}
+            isDark={isDark}
+          />
+          <LabelInput
+            label="Emergency Contact"
+            value={profile.number}
+            onChangeText={(val: string) => setProfile({ ...profile, number: val })}
+            editable={editable}
+            isDark={isDark}
+            keyboardType="phone-pad"
+          />
+          <LabelInput
+            label="Preferred Hospital"
+            value={profile.location}
+            onChangeText={(val: string) => setProfile({ ...profile, location: val })}
+            editable={editable}
+            isDark={isDark}
+          />
 
           <TouchableOpacity
-            style={styles.editBtn}
+            style={[styles.saveButton, !editable && { backgroundColor: '#888' }]}
             onPress={() => (editable ? handleUpdate() : setEditable(true))}
           >
-            <Text style={styles.editText}>{editable ? 'Save & Close' : 'Edit Profile'}</Text>
+            <Text style={{ color: '#fff', fontWeight: '600' }}>
+              {editable ? 'Save & Close' : 'Edit Profile'}
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.navBar}>
-        <Tab icon="home" label="Home" path="/receiver/home" />
-        <Tab icon="medkit" label="Request" path="/receiver/request" />
-        <Tab icon="call" label="Nearby" path="/receiver/nearbydonor" />
-        <Tab icon="settings" label="settings" path="/receiver/settings" active />
-      </View>
     </View>
   );
 }
 
-function Tab({ icon, label, path, active }: any) {
-  const router = useRouter();
+function LabelInput({
+  label,
+  isDark,
+  editable = true,
+  ...props
+}: {
+  label: string;
+  isDark: boolean;
+  editable?: boolean;
+  [key: string]: any;
+}) {
   return (
-    <TouchableOpacity style={styles.tabButton} onPress={() => router.push(path)}>
-      <Ionicons name={icon} size={24} color={active ? '#e53935' : '#aaa'} />
-      <Text style={[styles.tabLabel, active && { color: '#e53935' }]}>{label}</Text>
-    </TouchableOpacity>
+    <View style={{ marginBottom: 14 }}>
+      <Text style={[styles.label, { color: isDark ? '#ccc' : '#444' }]}>{label}</Text>
+      <TextInput
+        editable={editable}
+        style={[
+          styles.input,
+          {
+            backgroundColor: isDark ? '#1e1e1e' : '#f9f9f9',
+            color: isDark ? '#fff' : '#000',
+            borderColor: isDark ? '#444' : '#ccc',
+          },
+          props.multiline && { height: 80, textAlignVertical: 'top' },
+        ]}
+        placeholderTextColor={isDark ? '#888' : '#aaa'}
+        {...props}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#f3f3f3',
-    paddingVertical: 40,
+  container: { flex: 1 },
+  coverBox: {
+    height: 120,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     alignItems: 'center',
-  },
-  card: {
-    width: width * 0.9,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  coverImage: {
-    backgroundColor: '#ddd',
-    height: 100,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
     justifyContent: 'center',
-    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderWidth: 2,
   },
-  coverText: {
-    color: '#555',
-  },
-  avatarContainer: {
-    alignItems: 'center',
+  coverText: { fontWeight: '600' },
+  avatar: {
     marginTop: -30,
+    alignItems: 'center',
+    borderRadius: 50,
+    padding: 4,
+    borderWidth: 2,
+    elevation: 5,
   },
   badges: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginVertical: 10,
-  },
-  badge: {
-    backgroundColor: '#eee',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-    fontSize: 13,
-    color: '#333',
-  },
-  section: {
     marginTop: 10,
   },
-  label: {
-    fontSize: 14,
-    marginBottom: 4,
-    marginTop: 12,
+  badge: {
+    fontSize: 13,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 20,
     fontWeight: '500',
+  },
+  form: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+  },
+  label: {
+    fontWeight: '600',
+    fontSize: 13,
+    marginBottom: 4,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: 10,
-    padding: 10,
-    backgroundColor: '#f3f3f3',
-    color: '#444',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
   },
-  editBtn: {
-    marginTop: 24,
-    backgroundColor: '#222',
-    paddingVertical: 12,
-    borderRadius: 20,
+  saveButton: {
+    backgroundColor: '#EF4444',
+    marginTop: 16,
+    padding: 12,
     alignItems: 'center',
-  },
-  editText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: width,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    borderTopColor: '#eee',
-    borderTopWidth: 1,
-    zIndex: 10,
-  },
-  tabButton: {
-    alignItems: 'center',
-  },
-  tabLabel: {
-    fontSize: 12,
-    color: '#444',
-    marginTop: 4,
+    borderRadius: 10,
   },
 });

@@ -4,21 +4,20 @@ import { signOut } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
   Linking,
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TouchableOpacity,
-  View,
+  useColorScheme
 } from 'react-native';
+import { ThemedText, ThemedView } from '../../components/Themed';
 import { auth, db } from '../../firebase';
-
-const { width } = Dimensions.get('window');
 
 export default function ReceiverSettingsScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const [userData, setUserData] = useState({ name: '' });
   const [showHelpMenu, setShowHelpMenu] = useState(false);
@@ -28,34 +27,44 @@ export default function ReceiverSettingsScreen() {
   const [notifDonors, setNotifDonors] = useState(true);
   const [notifCamps, setNotifCamps] = useState(true);
   const [notifAlerts, setNotifAlerts] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [language, setLanguage] = useState('English');
 
-useEffect(() => {
-  const fetchData = async () => {
-    try {
-      const uid = auth.currentUser?.uid;
-      if (!uid) return;
-      const docRef = doc(db, 'receiver', uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        // Fallback in case name is missing
-        setUserData({ name: data?.name || 'Receiver' });
-      } else {
-        console.warn('No such document!');
+  // ✅ Fetch user name from Firestore
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const uid = auth.currentUser?.uid;
+        if (!uid) return;
+
+        // ✅ First try to get user from `users` collection
+        let docRef = doc(db, 'users', uid);
+        let docSnap = await getDoc(docRef);
+
+        // ✅ If not found, fallback to `receivers`
+        if (!docSnap.exists()) {
+          docRef = doc(db, 'receivers', uid);
+          docSnap = await getDoc(docRef);
+        }
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          setUserData({ name: data?.name || 'Receiver' });
+        } else {
+          setUserData({ name: 'Receiver' });
+        }
+      } catch (err) {
+        console.log('Error fetching userData:', err);
         setUserData({ name: 'Receiver' });
       }
-    } catch (err) {
-      console.log('Error fetching userData:', err);
-    }
-  };
-  fetchData();
-}, []);
+    };
 
-  const handleSupport = () => Linking.openURL('mailto:support@rakthrekha.org');
-  const handleBugReport = () => Linking.openURL('https://forms.gle/bugReportLink');
-  const handleFeedback = () => Linking.openURL('https://forms.gle/feedbackFormLink');
+    fetchData();
+  }, []);
 
+  const handleSupport = () => Linking.openURL('mailto:rakthrekha@gmail.com');
+  const handleBugReport = () => Linking.openURL('mailto:rakthrekha@gmail.com');
+  const handleFeedback = () => Linking.openURL('mailto:rakthrekha@gmail.com');
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -66,163 +75,111 @@ useEffect(() => {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: '#f3f3f3' }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <TouchableOpacity style={styles.profileButton} onPress={() => router.push('/receiver/profile')}>
+    <ThemedView style={{ flex: 1 }}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+        
+        {/* Profile Section */}
+        <TouchableOpacity
+          style={[styles.profileButton, { backgroundColor: '#e53935' }]}
+          onPress={() => router.push('/receiver/profile')}
+        >
           <Ionicons name="person-circle-outline" size={24} color="#fff" style={{ marginRight: 10 }} />
-          <Text style={styles.profileText}>{userData.name || 'Your Name'}</Text>
+          <ThemedText style={styles.profileText}>{userData.name || 'Your Name'}</ThemedText>
           <Ionicons name="pencil-outline" size={16} color="#fff" style={{ marginLeft: 10 }} />
         </TouchableOpacity>
 
+        {/* Notification Preferences */}
         <MenuButton icon="notifications-outline" label="Notification Preferences" onPress={() => setShowNotifMenu(!showNotifMenu)} />
         {showNotifMenu && (
-          <View style={styles.dropdown}>
+          <ThemedView style={[styles.dropdown, { backgroundColor: isDark ? '#333' : '#fff' }]}>
             <DropdownRow label="New Donors Nearby" value={notifDonors} onValueChange={setNotifDonors} />
             <DropdownRow label="Nearby Camps" value={notifCamps} onValueChange={setNotifCamps} />
             <DropdownRow label="Emergency Alerts" value={notifAlerts} onValueChange={setNotifAlerts} />
-          </View>
+          </ThemedView>
         )}
 
+        {/* Request History */}
         <MenuButton icon="document-text-outline" label="Your Request History" onPress={() => router.push('/receiver/request-history')} />
+
+        {/* Language & Theme */}
         <MenuButton icon="globe-outline" label="Language/Theme" onPress={() => setShowLangMenu(!showLangMenu)} />
         {showLangMenu && (
-          <View style={styles.dropdown}>
-            <View style={styles.languageRow}>
-              <Text style={styles.languageLabel}>Dark Mode:</Text>
-              <Text style={styles.languageValue}>Coming Soon</Text>
-            </View>
-            <View style={styles.languageRow}>
-              <Text style={styles.languageLabel}>Language:</Text>
-              <Text style={styles.languageValue}>{language}</Text>
-            </View>
-          </View>
+          <ThemedView style={[styles.dropdown, { backgroundColor: isDark ? '#333' : '#fff' }]}>
+            <ThemedView style={styles.languageRow}>
+              <ThemedText style={styles.languageLabel}>Dark Mode:</ThemedText>
+              <ThemedText style={styles.languageValue}>Auto</ThemedText>
+            </ThemedView>
+            <ThemedView style={styles.languageRow}>
+              <ThemedText style={styles.languageLabel}>Language:</ThemedText>
+              <ThemedText style={styles.languageValue}>{language}</ThemedText>
+            </ThemedView>
+          </ThemedView>
         )}
 
-        <MenuButton icon="lock-closed-outline" label="Privacy & Security" onPress={() => router.push("/receiver/privacy")} />
+        {/* Privacy */}
+        <MenuButton icon="lock-closed-outline" label="Privacy & Security" onPress={() => router.push('/receiver/privacy')} />
+
+        {/* Help & Feedback */}
         <MenuButton icon="help-circle-outline" label="Help & Feedback" onPress={() => setShowHelpMenu(!showHelpMenu)} />
         {showHelpMenu && (
-          <View style={{ marginLeft: 10 }}>
+          <ThemedView style={{ marginLeft: 10 }}>
             <MenuButton icon="mail-outline" label="Contact Support" onPress={handleSupport} small />
             <MenuButton icon="bug-outline" label="Report a Bug" onPress={handleBugReport} small />
             <MenuButton icon="chatbubble-ellipses-outline" label="Send Feedback" onPress={handleFeedback} small />
-          </View>
+          </ThemedView>
         )}
 
+        {/* Logout */}
         <MenuButton icon="log-out-outline" label="Logout" onPress={handleLogout} />
-      </ScrollView>
 
-      <View style={styles.navBar}>
-        <Tab icon="home" label="Home" path="/receiver/home" />
-        <Tab icon="medkit" label="Request" path="/receiver/request" />
-        <Tab icon="people" label="Donors" path="/receiver/nearbydonor" />
-        <Tab icon="settings" label="Settings" active path="/receiver/settings" />
-      </View>
-    </View>
+      </ScrollView>
+    </ThemedView>
   );
 }
 
-// Components
+// ✅ Reusable Menu Button
 function MenuButton({ icon, label, onPress, small }: any) {
   return (
     <TouchableOpacity onPress={onPress} style={[styles.menuButton, small && { paddingLeft: 30 }]}>
       <Ionicons name={icon} size={20} color="#fff" style={{ marginRight: 10 }} />
-      <Text style={[styles.label, small && { fontSize: 13 }]}>{label}</Text>
+      <ThemedText style={[styles.label, small && { fontSize: 13 }]}>{label}</ThemedText>
     </TouchableOpacity>
   );
 }
 
-function Tab({ icon, label, path, active }: any) {
-  const router = useRouter();
-  return (
-    <TouchableOpacity style={styles.tabButton} onPress={() => router.push(path)}>
-      <Ionicons name={icon} size={24} color={active ? '#e53935' : '#aaa'} />
-      <Text style={[styles.label, active && { color: '#e53935' }]}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
+// ✅ Toggle Switch Row
 function DropdownRow({ label, value, onValueChange }: any) {
   return (
-    <View style={styles.dropdownRow}>
-      <Text>{label}</Text>
+    <ThemedView style={styles.dropdownRow}>
+      <ThemedText>{label}</ThemedText>
       <Switch value={value} onValueChange={onValueChange} />
-    </View>
+    </ThemedView>
   );
 }
 
-// Styles
+// ✅ Styles
 const styles = StyleSheet.create({
-  container: { flex: 1 },
   profileButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#e53935',
-    margin: 16,
-    padding: 12,
+    padding: 14,
     borderRadius: 20,
+    marginBottom: 20,
   },
-  profileText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
+  profileText: { fontSize: 16, fontWeight: '700', color: '#fff' },
   menuButton: {
     backgroundColor: '#e53935',
-    marginHorizontal: 16,
-    marginVertical: 6,
-    padding: 12,
     borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginVertical: 6,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  label: {
-    fontSize: 14,
-    color: '#244',
-    fontWeight: '600',
-  },
-  dropdown: {
-    marginHorizontal: 26,
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  dropdownRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  languageRow: {
-    marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  languageLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  languageValue: {
-    fontSize: 14,
-    color: '#333',
-  },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: width,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    borderTopColor: '#eee',
-    borderTopWidth: 1,
-    zIndex: 10,
-  },
-  tabButton: {
-    alignItems: 'center',
-  },
+  label: { fontSize: 14, color: '#fff', fontWeight: '600' },
+  dropdown: { borderRadius: 12, padding: 12, marginVertical: 8, marginHorizontal: 10 },
+  dropdownRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
+  languageRow: { flexDirection: 'row', justifyContent: 'space-between', marginVertical: 8 },
+  languageLabel: { fontSize: 14, fontWeight: '600' },
+  languageValue: { fontSize: 14 },
 });

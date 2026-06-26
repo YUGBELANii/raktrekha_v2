@@ -1,165 +1,159 @@
-import { Ionicons } from '@expo/vector-icons';
+import MessageButton from '@/components/MessageBtn';
+import { ThemedCard, ThemedText, ThemedView } from '@/components/Themed';
+import { ms, vs } from '@/constants/Layout';
+import { auth, db } from '@/firebase';
 import { useRouter } from 'expo-router';
+import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import React from 'react';
-import {
-  Dimensions,
-  Image,
-  Linking,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get('window');
+interface AcceptedRequest {
+  id: string;
+  name: string;
+  bloodGroup: string;
+  urgency: string;
+  status: string;
+  acceptedBy: string;
+  patientId?: string; // made optional to avoid crash if not present
+  number?: string;
+  createdAt?: any;
+}
 
 export default function DonorHome() {
+  const insets = useSafeAreaInsets();
+  const [acceptedRequest, setAcceptedRequest] = React.useState<AcceptedRequest | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
 
-  const openMap = () => {
-    const url = 'https://www.google.com/maps/search/?api=1&query=Shanti+Nagar+Gandhi+Statue';
-    Linking.openURL(url);
+  React.useEffect(() => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    const q = query(
+      collection(db, 'requests'),
+      where('acceptedBy', '==', currentUser.uid),
+      where('status', '==', 'accepted'),
+      orderBy('createdAt', 'desc'),
+      limit(1)
+    );
+
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      if (!snapshot.empty) {
+        const docSnap = snapshot.docs[0];
+        const rawData = docSnap.data();
+
+        // Casting carefully to prevent runtime errors
+        const data: AcceptedRequest = {
+          id: docSnap.id,
+          name: rawData.name || 'Unknown',
+          bloodGroup: rawData.bloodGroup || 'N/A',
+          urgency: rawData.urgency || 'N/A',
+          status: rawData.status || 'pending',
+          acceptedBy: rawData.acceptedBy || '',
+          patientId: rawData.patientId,
+          createdAt: rawData.createdAt,
+        };
+
+        if (data.patientId) {
+          try {
+            const patientDoc = await getDoc(doc(db, 'users', data.patientId));
+            if (patientDoc.exists()) {
+              data.number = patientDoc.data()?.number || '';
+            } else {
+              console.warn('Patient not found in users collection.');
+            }
+          } catch (err) {
+            console.error('Error fetching patient doc:', err);
+          }
+        }
+
+        setAcceptedRequest(data);
+      } else {
+        setAcceptedRequest(null);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleCancel = async () => {
+    if (!acceptedRequest?.id) return;
+    try {
+      await updateDoc(doc(db, 'requests', acceptedRequest.id), {
+        status: 'pending',
+        acceptedBy: '',
+      });
+      setAcceptedRequest(null);
+      alert('Cancelled');
+    } catch (err) {
+      console.error('Cancel error:', err);
+    }
   };
 
   return (
-    <View style={styles.container}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+    <ThemedView style={[styles.container, { paddingTop: insets.top + vs(10) }]}>
+      <ScrollView contentContainerStyle={{ paddingBottom: vs(30) }}>
         {/* Awareness Board */}
-        <View style={styles.card}>
-          <Text style={styles.title}>Awareness Board</Text>
-          <Text style={styles.bullet}>❤️ Why Donate?</Text>
-          <Text style={styles.point}>• Every donation saves up to 3 lives</Text>
-          <Text style={styles.point}>
-            • Helps accident victims, cancer & thalassemia patients, and pregnant women
-          </Text>
+        <ThemedCard style={[styles.card, { marginTop: vs(10) }]}>
+          <ThemedText type="title" style={styles.title}>🧠 Awareness Board</ThemedText>
 
-          <Text style={styles.bullet}>✅ You Can Donate If:</Text>
-          <Text style={styles.point}>• Age: 18–65 years</Text>
-          <Text style={styles.point}>• Weight: 50 kg+</Text>
-          <Text style={styles.point}>• Healthy & not on strong medications</Text>
+          <ThemedText type="subtitle" style={styles.subtitle}>❤️ Why Donate?</ThemedText>
+          <ThemedText style={styles.text}>• Every donation saves up to 3 lives</ThemedText>
+          <ThemedText style={styles.text}>• Helps accident victims, cancer & thalassemia patients, and pregnant women</ThemedText>
 
-          <Text style={styles.bullet}>🧠 Busting Myths:</Text>
-          <Text style={styles.point}>
-            • Myth: I’ll feel weak{'\n'}  Truth: Your body recovers quickly
-          </Text>
-          <Text style={styles.point}>
-            • Myth: I need to know the patient{'\n'}  Truth: Your blood helps anyone in urgent need
-          </Text>
-        </View>
+          <ThemedText type="subtitle" style={styles.subtitle}>✅ You Can Donate If:</ThemedText>
+          <ThemedText style={styles.text}>• Age: 18–65 years</ThemedText>
+          <ThemedText style={styles.text}>• Weight: 50 kg+</ThemedText>
+          <ThemedText style={styles.text}>• Healthy & not on strong medications</ThemedText>
 
-        {/* Nearby Camps */}
-        <View style={styles.card}>
-          <Text style={styles.title}>Active Blood Camps Nearby</Text>
-          <Text style={styles.sub}>Camp Address:</Text>
-          <Text style={styles.point}>Shanti Nagar near old Gandhi statue</Text>
-          <Text style={styles.sub}>Camp Timing:</Text>
-          <Text style={styles.point}>2:00 PM to 5:00 PM</Text>
-          <TouchableOpacity style={styles.mapBox} onPress={openMap}>
-            <Image
-              source={{
-                uri: 'https://maps.gstatic.com/tactile/pane/default_geocode-2x.png',
-              }}
-              style={{ width: '100%', height: '100%', borderRadius: 10 }}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
-          <Text style={styles.link}>Click on the map to view full location</Text>
-        </View>
+          <ThemedText type="subtitle" style={styles.subtitle}>🧠 Busting Myths:</ThemedText>
+          <ThemedText style={styles.text}>• Myth: I’ll feel weak{"\n"}Truth: Your body recovers quickly</ThemedText>
+          <ThemedText style={styles.text}>• Myth: I need to know the patient{"\n"}Truth: Your blood helps anyone in urgent need</ThemedText>
+        </ThemedCard>
+
+        {/* Accepted Request */}
+        {acceptedRequest && (
+          <ThemedCard style={styles.requestCard}>
+            <ThemedText style={styles.requestTitle}>Request Accepted</ThemedText>
+            <ThemedText style={styles.info}>Patient: {acceptedRequest.name}</ThemedText>
+            <ThemedText style={styles.info}>Blood Group: {acceptedRequest.bloodGroup}</ThemedText>
+            <ThemedText style={styles.info}>Urgency: {acceptedRequest.urgency}</ThemedText>
+
+            <View style={styles.actions}>
+              <MessageButton type="whatsapp" phone={acceptedRequest?.number || ''} message="Hello, I’m your donor from Rakth Rekha." />
+              <MessageButton type="sms" phone={acceptedRequest?.number || ''} message="Hello, contacting you as your donor." />
+              <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
+                <ThemedText style={styles.cancelText}>✖ Cancel</ThemedText>
+              </TouchableOpacity>
+            </View>
+          </ThemedCard>
+        )}
       </ScrollView>
-
-      {/* Bottom Tab Navigation */}
-      <View style={styles.navBar}>
-        <Tab icon="home" label="Home" path="/donor/home" active />
-        <Tab icon="medkit" label="Nearby Request" path="/donor/request" />
-        <Tab icon="map" label="Nearby Camps" path="/donor/camps" />
-        <Tab icon="settings" label="Settings" path="/donor/settings" />
-      </View>
-    </View>
-  );
-}
-
-function Tab({
-  icon,
-  label,
-  path,
-  active,
-}: {
-  icon: any;
-  label: string;
-  path: string;
-  active?: boolean;
-}) {
-  const router = useRouter();
-  return (
-    <TouchableOpacity style={styles.tabButton} onPress={() => router.push(path)}>
-      <Ionicons name={icon} size={22} color={active ? '#fff' : '#eee'} />
-      <Text style={[styles.tabLabel, active && { color: '#fff' }]}>{label}</Text>
-    </TouchableOpacity>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  card: {
-    backgroundColor: '#fff',
-    margin: 16,
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 3,
+  container: { flex: 1, paddingHorizontal: ms(14) },
+  card: { marginBottom: vs(16), borderRadius: ms(12), padding: ms(14) },
+  title: { fontSize: ms(18), fontWeight: '700', marginBottom: vs(8) },
+  subtitle: { fontSize: ms(15), fontWeight: '600', marginTop: vs(10), marginBottom: vs(4) },
+  text: { fontSize: ms(13), marginBottom: vs(4) },
+
+  requestCard: { borderRadius: ms(12), padding: ms(14), marginBottom: vs(16) },
+  requestTitle: { fontSize: ms(16), fontWeight: '700', marginBottom: vs(6) },
+  info: { fontSize: ms(13), marginBottom: vs(4) },
+
+  actions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: vs(10) },
+  cancelBtn: {
+    borderWidth: 1,
     borderColor: '#e53935',
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  bullet: {
-    fontWeight: 'bold',
-    marginTop: 10,
-    color: '#333',
-  },
-  point: {
-    color: '#444',
-    fontSize: 14,
-    marginLeft: 10,
-    marginTop: 4,
-  },
-  sub: {
-    fontWeight: '600',
-    marginTop: 10,
-    color: '#333',
-  },
-  link: {
-    color: '#666',
-    fontSize: 13,
-    marginTop: 6,
-    textAlign: 'center',
-  },
-  mapBox: {
-    height: 120,
-    backgroundColor: '#ccc',
-    marginTop: 10,
-    borderRadius: 10,
-    overflow: 'hidden',
-  },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    width: width,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#e53935',
-    paddingVertical: 10,
-  },
-  tabButton: {
+    paddingVertical: vs(8),
+    borderRadius: ms(8),
+    flex: 1,
     alignItems: 'center',
+    marginLeft: ms(6),
   },
-  tabLabel: {
-    fontSize: 12,
-    color: '#eee',
-    marginTop: 4,
-  },
+  cancelText: { color: '#e53935', fontWeight: '600' },
 });

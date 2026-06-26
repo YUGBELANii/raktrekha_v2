@@ -1,19 +1,17 @@
-import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import { getAuth } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-  Dimensions,
   Platform,
   ScrollView,
   StyleSheet,
   Switch,
-  Text,
   TouchableOpacity,
-  View,
+  useWindowDimensions
 } from 'react-native';
+import { ThemedText, ThemedView, useThemeColor } from '../../components/Themed';
 import { db } from '../../firebase';
 
 type DayAvailability = {
@@ -27,17 +25,24 @@ type Availability = {
 };
 
 const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const { width } = Dimensions.get('window');
 
 export default function ScheduleAvailability() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { width } = useWindowDimensions();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
   const user = getAuth().currentUser;
 
   const [availability, setAvailability] = useState<Availability>({});
   const [showTimePicker, setShowTimePicker] = useState({ show: false, day: '', type: 'start' });
 
+  const backgroundColor = useThemeColor({}, 'background');
+  const cardColor = useThemeColor({}, 'card');
+  const textColor = useThemeColor({}, 'text');
+
   useEffect(() => {
     fetchAvailability();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const formatTime = (date: Date) =>
@@ -69,7 +74,7 @@ export default function ScheduleAvailability() {
   };
 
   const toggleDay = (day: string) => {
-    setAvailability((prev: Availability) => ({
+    setAvailability(prev => ({
       ...prev,
       [day]: {
         ...prev[day],
@@ -87,7 +92,7 @@ export default function ScheduleAvailability() {
     const formatted = formatTime(selectedDate);
     const { day, type } = showTimePicker;
 
-    setAvailability((prev: Availability) => ({
+    setAvailability(prev => ({
       ...prev,
       [day]: {
         ...prev[day],
@@ -126,41 +131,41 @@ export default function ScheduleAvailability() {
   };
 
   return (
-    <View style={styles.container}>
+    <ThemedView style={{ flex: 1, backgroundColor }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <Text style={styles.header}>Your Weekly Availability</Text>
+        <ThemedText style={styles.header}>Your Weekly Availability</ThemedText>
 
         {weekdays.map(day => (
-          <View key={day} style={styles.card}>
-            <View style={styles.row}>
-              <Text style={styles.dayText}>{day}</Text>
+          <ThemedView key={day} style={[styles.card, { backgroundColor: cardColor }]}>
+            <ThemedView style={styles.row}>
+              <ThemedText style={[styles.dayText, { color: textColor }]}>{day}</ThemedText>
               <Switch
                 value={availability?.[day]?.available ?? false}
                 onValueChange={() => toggleDay(day)}
               />
-            </View>
+            </ThemedView>
 
             {availability?.[day]?.available && (
-              <View style={styles.timeRow}>
+              <ThemedView style={styles.timeRow}>
                 <TouchableOpacity
                   style={styles.timeButton}
                   onPress={() => setShowTimePicker({ show: true, day, type: 'start' })}
                 >
-                  <Text>Start: {availability?.[day]?.start ?? '--:--'}</Text>
+                  <ThemedText>Start: {availability?.[day]?.start ?? '--:--'}</ThemedText>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.timeButton}
                   onPress={() => setShowTimePicker({ show: true, day, type: 'end' })}
                 >
-                  <Text>End: {availability?.[day]?.end ?? '--:--'}</Text>
+                  <ThemedText>End: {availability?.[day]?.end ?? '--:--'}</ThemedText>
                 </TouchableOpacity>
-              </View>
+              </ThemedView>
             )}
-          </View>
+          </ThemedView>
         ))}
 
         <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
-          <Text style={{ color: '#fff', fontWeight: '700' }}>Save Availability</Text>
+          <ThemedText style={{ color: '#fff', fontWeight: '700' }}>Save Availability</ThemedText>
         </TouchableOpacity>
 
         {showTimePicker.show && (
@@ -172,37 +177,22 @@ export default function ScheduleAvailability() {
           />
         )}
       </ScrollView>
-
-      {/* Bottom Navigation */}
-      <View style={styles.navBar}>
-        <Tab icon="home" label="Home" path="/donor/home" />
-        <Tab icon="medkit" label="Nearby Request" path="/donor/request" />
-        <Tab icon="map" label="Nearby Camps" path="/donor/camps" />
-        <Tab icon="settings" label="Settings" path="/donor/settings" active />
-      </View>
-    </View>
-  );
-}
-
-function Tab({ icon, label, path, active }: any) {
-  const router = useRouter();
-  return (
-    <TouchableOpacity style={styles.tabButton} onPress={() => router.push(path)}>
-      <Ionicons name={icon} size={24} color={active ? '#e53935' : '#aaa'} />
-      <Text style={[styles.label, active && { color: '#e53935' }]}>{label}</Text>
-    </TouchableOpacity>
+    </ThemedView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f3f3f3' },
-  header: { fontSize: 18, fontWeight: '700', marginTop: 16, marginBottom: 16, textAlign: 'center' },
+  header: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginTop: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
   card: {
-    backgroundColor: '#fff',
     padding: 12,
     marginBottom: 12,
     borderRadius: 12,
-    borderColor: '#ddd',
     borderWidth: 1,
     marginHorizontal: 16,
   },
@@ -219,7 +209,7 @@ const styles = StyleSheet.create({
   },
   timeButton: {
     padding: 8,
-    backgroundColor: '#eee',
+    backgroundColor: '#ccc',
     borderRadius: 8,
     minWidth: 100,
     alignItems: 'center',
@@ -232,26 +222,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     marginHorizontal: 16,
-  },
-  navBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    width: width,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
-    paddingVertical: 10,
-    borderTopColor: '#eee',
-    borderTopWidth: 1,
-    zIndex: 10,
-  },
-  tabButton: {
-    alignItems: 'center',
-  },
-  label: {
-    fontSize: 12,
-    color: '#444',
-    marginTop: 4,
   },
 });

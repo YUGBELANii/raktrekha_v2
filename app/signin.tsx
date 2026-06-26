@@ -2,11 +2,14 @@ import { useRouter } from 'expo-router';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { auth, db } from '../firebase';
 
 export default function SignInScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -37,12 +40,20 @@ export default function SignInScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+    <View style={[styles.container, { backgroundColor: isDark ? '#000' : '#fff' }]}>
+      <Text style={[styles.title, { color: '#e53935' }]}>Login</Text>
 
       <TextInput
         placeholder="Email"
-        style={styles.input}
+        placeholderTextColor={isDark ? '#aaa' : '#666'}
+        style={[
+          styles.input,
+          {
+            backgroundColor: isDark ? '#1e1e1e' : '#f9f9f9',
+            color: isDark ? '#fff' : '#000',
+            borderColor: isDark ? '#444' : '#ddd',
+          },
+        ]}
         value={email}
         onChangeText={setEmail}
         keyboardType="email-address"
@@ -51,7 +62,15 @@ export default function SignInScreen() {
 
       <TextInput
         placeholder="Password"
-        style={styles.input}
+        placeholderTextColor={isDark ? '#aaa' : '#666'}
+        style={[
+          styles.input,
+          {
+            backgroundColor: isDark ? '#1e1e1e' : '#f9f9f9',
+            color: isDark ? '#fff' : '#000',
+            borderColor: isDark ? '#444' : '#ddd',
+          },
+        ]}
         secureTextEntry
         value={password}
         onChangeText={setPassword}
@@ -62,7 +81,9 @@ export default function SignInScreen() {
       </TouchableOpacity>
 
       <TouchableOpacity onPress={() => router.push('/signup')}>
-        <Text style={styles.linkText}>Don’t have an account? Sign Up</Text>
+        <Text style={[styles.linkText, { color: isDark ? '#90caf9' : '#1e88e5' }]}>
+          Don’t have an account? Sign Up
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -74,13 +95,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
   title: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#e53935',
-    marginBottom: 12,
+    marginBottom: 24,
     textAlign: 'center',
   },
   input: {
@@ -88,9 +107,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
-    marginBottom: 14,
+    marginBottom: 16,
     fontSize: 16,
   },
   button: {
@@ -98,9 +116,9 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 40,
     borderRadius: 10,
-    marginTop: 10,
     width: '100%',
     alignItems: 'center',
+    marginTop: 12,
   },
   buttonText: {
     color: '#fff',
@@ -108,9 +126,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   linkText: {
-    color: '#1e88e5',
     fontSize: 14,
-    marginTop: 16,
+    marginTop: 20,
     textDecorationLine: 'underline',
   },
 });

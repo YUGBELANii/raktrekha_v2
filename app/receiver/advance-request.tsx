@@ -5,13 +5,17 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
-  TouchableOpacity
+  TouchableOpacity,
+  useColorScheme,
 } from 'react-native';
+import { ThemedText, ThemedView } from '../../components/Themed';
 
 const AdvanceRequestScreen = () => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const [form, setForm] = useState({
     bloodType: '',
@@ -26,16 +30,12 @@ const AdvanceRequestScreen = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const onDateChange = (
-    event: any,
-    selectedDate?: Date | undefined
-  ) => {
+  const onDateChange = (event: any, selectedDate?: Date | undefined) => {
     if (selectedDate) setDate(selectedDate);
     setShowPicker(Platform.OS === 'ios');
   };
 
   const handleSubmit = () => {
-    // Validate form and date
     if (!form.bloodType || !form.units || !form.reason) {
       alert('Please fill in all fields');
       return;
@@ -49,65 +49,115 @@ const AdvanceRequestScreen = () => {
     });
 
     alert(`Request submitted for ${formattedDate}`);
-    // router.push('/receiver/success'); // or wherever
   };
 
   return (
-    <ScrollView contentContainerStyle={{ padding: 20, backgroundColor: '#fff', flexGrow: 1 }}>
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginBottom: 20 }}>
-        Advance Blood Request
-      </Text>
+    <ThemedView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <ThemedText type="title" style={styles.title}>
+          Advance Blood Request
+        </ThemedText>
 
-      <Text style={{ fontSize: 16, marginBottom: 5 }}>Blood Type</Text>
-      <TextInput
-        placeholder="e.g. A+"
-        style={styles.input}
-        value={form.bloodType}
-        onChangeText={(text) => handleChange('bloodType', text)}
-      />
-
-      <Text style={{ fontSize: 16, marginBottom: 5 }}>Units Required</Text>
-      <TextInput
-        placeholder="e.g. 2"
-        style={styles.input}
-        keyboardType="numeric"
-        value={form.units}
-        onChangeText={(text) => handleChange('units', text)}
-      />
-
-      <Text style={{ fontSize: 16, marginBottom: 5 }}>Reason</Text>
-      <TextInput
-        placeholder="Why do you need it?"
-        style={[styles.input, { height: 100 }]}
-        multiline
-        value={form.reason}
-        onChangeText={(text) => handleChange('reason', text)}
-      />
-
-      <Text style={{ fontSize: 16, marginTop: 20 }}>Required Date</Text>
-      <TouchableOpacity onPress={() => setShowPicker(true)} style={styles.dateBox}>
-        <Text>{date.toDateString()}</Text>
-      </TouchableOpacity>
-
-      {showPicker && (
-        <DateTimePicker
-          value={date}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={onDateChange}
-          minimumDate={new Date()}
-          maximumDate={new Date(2100, 11, 31)}
+        <ThemedText style={styles.label}>Blood Type</ThemedText>
+        <TextInput
+          placeholder="e.g. A+"
+          placeholderTextColor={isDark ? '#888' : '#aaa'}
+          style={[
+            styles.input,
+            {
+              backgroundColor: isDark ? '#222' : '#fff',
+              color: isDark ? '#fff' : '#000',
+            },
+          ]}
+          value={form.bloodType}
+          onChangeText={(text) => handleChange('bloodType', text)}
         />
-      )}
 
-      <TouchableOpacity onPress={handleSubmit} style={styles.submitBtn}>
-        <Text style={{ color: '#fff', fontWeight: 'bold' }}>Submit Request</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <ThemedText style={styles.label}>Units Required</ThemedText>
+        <TextInput
+          placeholder="e.g. 2"
+          placeholderTextColor={isDark ? '#888' : '#aaa'}
+          style={[
+            styles.input,
+            {
+              backgroundColor: isDark ? '#222' : '#fff',
+              color: isDark ? '#fff' : '#000',
+            },
+          ]}
+          keyboardType="numeric"
+          value={form.units}
+          onChangeText={(text) => handleChange('units', text)}
+        />
+
+        <ThemedText style={styles.label}>Reason</ThemedText>
+        <TextInput
+          placeholder="Why do you need it?"
+          placeholderTextColor={isDark ? '#888' : '#aaa'}
+          style={[
+            styles.input,
+            {
+              height: 100,
+              textAlignVertical: 'top',
+              backgroundColor: isDark ? '#222' : '#fff',
+              color: isDark ? '#fff' : '#000',
+            },
+          ]}
+          multiline
+          value={form.reason}
+          onChangeText={(text) => handleChange('reason', text)}
+        />
+
+        <ThemedText style={[styles.label, { marginTop: 20 }]}>
+          Required Date
+        </ThemedText>
+        <TouchableOpacity
+          onPress={() => setShowPicker(true)}
+          style={[
+            styles.dateBox,
+            {
+              backgroundColor: isDark ? '#222' : '#fff',
+            },
+          ]}
+        >
+          <ThemedText>{date.toDateString()}</ThemedText>
+        </TouchableOpacity>
+
+        {showPicker && (
+          <DateTimePicker
+            value={date}
+            mode="date"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={onDateChange}
+            minimumDate={new Date()}
+            maximumDate={new Date(2100, 11, 31)}
+          />
+        )}
+
+        <TouchableOpacity onPress={handleSubmit} style={styles.submitBtn}>
+          <ThemedText style={styles.submitText}>Submit Request</ThemedText>
+        </TouchableOpacity>
+      </ScrollView>
+    </ThemedView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scroll: {
+    padding: 20,
+    flexGrow: 1,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -128,6 +178,10 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  submitText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
 
