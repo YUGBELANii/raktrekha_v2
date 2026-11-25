@@ -6,8 +6,8 @@ import {
   getAuth,
   reauthenticateWithCredential,
   updatePassword,
-} from 'firebase/auth';
-import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore';
+} from '../../lib/supabase';
+import { doc, getDoc, getFirestore, setDoc } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
