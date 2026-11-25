@@ -37,7 +37,7 @@ export default function DonorSignUp() {
     }
 
     try {
-      const userCred = await createUserWithEmailAndPassword(auth, String(email), String(password));
+      const userCred = await createUserWithEmailAndPassword(auth, String(email), String(password), { role: 'donor', name: String(name), age: Number(age), bloodGroup, location, availability, number: String(number) });
       const uid = userCred.user.uid;
 
       await setDoc(doc(db, 'users', uid), {
