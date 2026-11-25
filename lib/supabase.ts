@@ -41,11 +41,7 @@ type CompatUser = {
 const asUser = (user: any): CompatUser | null =>
   user ? { ...user, uid: user.id, id: user.id, providerData: [{ providerId: 'password' }] } : null;
 
-export const auth = {
-  get currentUser() {
-    return asUser(supabase.auth.getSession().then ? (globalThis as any).__raktUser : null);
-  },
-};
+export const auth: { currentUser: CompatUser | null } = { currentUser: null };
 
 let currentUser: CompatUser | null = null;
 supabase.auth.getSession().then(({ data }) => { currentUser = asUser(data.session?.user); });
@@ -108,12 +104,12 @@ type Ref = { table: string; id?: string; nested?: string[] };
 type Filter = { field: string; op: string; value: any };
 type QuerySpec = { ref: Ref; filters: Filter[]; order?: { field: string; direction: 'asc' | 'desc' }; max?: number };
 
-const tableName = (name: string) => name === 'users' ? 'profiles' : name === 'requests' ? 'blood_requests' : name;
+const tableName = (name: string) => name === 'users' ? 'profiles' : name === 'requests' ? 'blood_requests' : name === 'bloodCamps' ? 'blood_camps' : name;
 const fieldName = (name: string) => ({
   uid: 'id', patientId: 'patient_id', acceptedBy: 'accepted_by', requestId: 'request_id',
   bloodGroup: 'blood_group', createdAt: 'created_at', updatedAt: 'updated_at',
   completedAt: 'completed_at', preferredHospital: 'preferred_hospital',
-  emergencyContact: 'emergency_contact', fullName: 'name',
+  emergencyContact: 'emergency_contact', fullName: 'name', hostedBy: 'hosted_by',
 }[name] || name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
 
 function mapProfile(data: any) {
@@ -131,7 +127,9 @@ function fromDb(row: any) {
   });
   out.uid = row?.id;
   out.fullName = out.name;
-  out.bloodGroup = out.bloodGroup;
+  for (const key of ['createdAt', 'updatedAt', 'completedAt']) {
+    if (typeof out[key] === 'string') out[key] = new Timestamp(new Date(out[key]));
+  }
   return out;
 }
 function refData(ref: Ref) { return { id: ref.id, table: ref.table }; }
