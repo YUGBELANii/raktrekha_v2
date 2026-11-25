@@ -37,7 +37,7 @@ export default function ReceiverSignUp() {
     }
 
     try {
-      const userCred = await createUserWithEmailAndPassword(auth, String(email), String(password));
+      const userCred = await createUserWithEmailAndPassword(auth, String(email), String(password), { role: 'patient', name: String(name), age: Number(age), bloodGroup, condition, urgency, number: String(number) });
       const uid = userCred.user.uid;
 
       await setDoc(doc(db, 'users', uid), {
