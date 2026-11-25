@@ -1,9 +1,9 @@
 import MessageButton from '@/components/MessageBtn';
 import { ThemedCard, ThemedText, ThemedView } from '@/components/Themed';
 import { ms, vs } from '@/constants/Layout';
-import { auth, db } from '@/firebase';
+import { auth, db } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
-import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc, where } from '../../lib/supabase';
 import React from 'react';
 import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
