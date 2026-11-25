@@ -58,11 +58,15 @@ export async function signInWithEmailAndPassword(_auth: unknown, email: string, 
   return { user: currentUser };
 }
 
-export async function createUserWithEmailAndPassword(_auth: unknown, email: string, password: string) {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+export async function createUserWithEmailAndPassword(_auth: unknown, email: string, password: string, metadata?: Record<string, unknown>) {
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { data: metadata || {} } });
   if (error) throw error;
+  if (!data.user) throw new Error('Supabase did not return a user after sign up.');
   currentUser = asUser(data.user);
-  if (!data.user) throw new Error('Account created, but no user was returned. Check Supabase email confirmation settings.');
+  if (!data.session) {
+    currentUser = null;
+    throw new Error('Your account and profile were created. Please verify your email, then sign in.');
+  }
   return { user: currentUser };
 }
 
