@@ -1,6 +1,6 @@
 import MessageButton from '@/components/MessageBtn';
 import { Stack, useRouter } from 'expo-router';
-import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc, where } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import {
   Alert,
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { ms, s, vs } from 'react-native-size-matters';
 import { ThemedCard, ThemedText, ThemedView } from '../../components/Themed';
-import { auth, db } from '../../firebase';
+import { auth, db } from '../../lib/supabase';
 
 type Request = {
   id?: string;
