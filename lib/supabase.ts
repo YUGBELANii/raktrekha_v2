@@ -228,7 +228,15 @@ async function runQuery(spec: QuerySpec) {
     let item = fromDb(row);
     if (spec.ref.table === 'profiles') {
       const { data: contact } = await supabase.from('profile_contacts').select('phone, emergency_contact').eq('user_id', row.id).maybeSingle();
-      item = { ...item, number: contact?.phone || '', phone: contact?.phone || '' };
+      item = { ...item, number: contact?.phone || '', phone: contact?.phone || '', emergencyContact: contact?.emergency_contact || '' };
+    }
+    if (spec.ref.table === 'blood_requests') {
+      const viewerId = currentUser?.uid;
+      const isCounterparty = viewerId && (row.patient_id === viewerId || row.accepted_by === viewerId);
+      if (isCounterparty) {
+        const { data: contact } = await supabase.from('profile_contacts').select('phone').eq('user_id', row.patient_id).maybeSingle();
+        item = { ...item, number: contact?.phone || '' };
+      }
     }
     return { id: row.id, data: () => item };
   }));
