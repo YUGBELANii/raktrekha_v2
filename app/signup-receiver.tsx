@@ -31,7 +31,7 @@ export default function ReceiverSignUp() {
       return;
     }
 
-    if (isNaN(Number(age)) || Number(age) < 1) {
+    if (isNaN(Number(age)) || Number(age) < 1 || Number(age) > 120) {
       alert('Please enter a valid age');
       return;
     }
