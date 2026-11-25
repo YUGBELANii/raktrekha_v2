@@ -6,11 +6,11 @@ import {
   query,
   Timestamp,
   where,
-} from 'firebase/firestore';
+} from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, FlatList, StyleSheet } from 'react-native';
 import { ThemedCard, ThemedText, ThemedView } from '../../components/Themed';
-import { auth, db } from '../../firebase';
+import { auth, db } from '../../lib/supabase';
 
 type RequestItem = {
   id: string;
