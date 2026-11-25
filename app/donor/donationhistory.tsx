@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
-import { getAuth } from 'firebase/auth';
-import { Timestamp, collection, getDocs, query, where } from 'firebase/firestore';
+import { getAuth } from '../../lib/supabase';
+import { Timestamp, collection, getDocs, query, where } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 import { ThemedText, ThemedView, useThemeColor } from '../../components/Themed';
-import { db } from '../../firebase';
+import { db } from '../../lib/supabase';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { width } = Dimensions.get('window');
