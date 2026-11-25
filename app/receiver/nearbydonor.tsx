@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Button, Menu, Provider as PaperProvider } from 'react-native-paper';
 import { ThemedText, ThemedView } from '../../components/Themed';
-import { db } from '../../firebase';
+import { db } from '../../lib/supabase';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { width } = Dimensions.get('window');
