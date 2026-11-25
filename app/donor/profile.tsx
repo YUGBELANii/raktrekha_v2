@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -17,7 +17,7 @@ import {
   View,
 } from 'react-native';
 import { ms, s, vs } from 'react-native-size-matters';
-import { auth, db } from '../../firebase';
+import { auth, db } from '../../lib/supabase';
 
 export default function DonorProfileScreen() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
