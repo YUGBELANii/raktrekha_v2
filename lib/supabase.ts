@@ -176,13 +176,8 @@ export async function setDoc(ref: Ref, value: any, options?: { merge?: boolean }
   }
   if (ref.table === 'profiles') {
     const { profile, contacts } = mapProfile(value);
-    if (options?.merge) {
-      const { error } = await supabase.from('profiles').upsert({ id: ref.id, ...profile }, { onConflict: 'id' });
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from('profiles').insert({ id: ref.id, ...profile });
-      if (error) throw error;
-    }
+    const { error } = await supabase.from('profiles').upsert({ id: ref.id, ...profile }, { onConflict: 'id' });
+    if (error) throw error;
     if (contacts.phone !== undefined || contacts.emergency_contact !== undefined) {
       const { error } = await supabase.from('profile_contacts').upsert({ user_id: ref.id, ...contacts }, { onConflict: 'user_id' });
       if (error) throw error;
