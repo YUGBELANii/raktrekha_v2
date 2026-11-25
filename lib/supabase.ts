@@ -194,7 +194,9 @@ export async function setDoc(ref: Ref, value: any, options?: { merge?: boolean }
 }
 export async function addDoc(ref: Ref, value: any) {
   const mapped: any = {};
-  Object.entries(value).forEach(([key, val]) => { mapped[fieldName(key)] = val; });
+  Object.entries(value).forEach(([key, val]) => {
+    mapped[fieldName(key)] = val instanceof Timestamp ? val.toDate().toISOString() : val instanceof Date ? val.toISOString() : val;
+  });
   if (mapped.units !== undefined) mapped.units = Number(mapped.units);
   const { data, error } = await supabase.from(ref.table).insert(mapped).select('id').single();
   if (error) throw error;
