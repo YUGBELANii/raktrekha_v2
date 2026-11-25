@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import {
   Dimensions,
@@ -12,7 +12,7 @@ import {
   useColorScheme,
   View,
 } from 'react-native';
-import { auth, db } from '../../firebase';
+import { auth, db } from '../../lib/supabase';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const { width } = Dimensions.get('window');
