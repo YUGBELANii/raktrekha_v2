@@ -113,7 +113,7 @@ const fieldName = (name: string) => ({
 }[name] || name.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`));
 
 function mapProfile(data: any) {
-  const { number, phone, emergencyContact, ...rest } = data || {};
+  const { number, phone, emergencyContact, email, uid, createdAt, ...rest } = data || {};
   const mapped: any = {};
   Object.entries(rest).forEach(([key, value]) => { mapped[fieldName(key)] = value; });
   if (mapped.age !== undefined && mapped.age !== null) mapped.age = Number(mapped.age);
