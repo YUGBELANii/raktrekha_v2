@@ -218,6 +218,7 @@ export async function updateDoc(ref: Ref, value: any) {
 }
 async function runQuery(spec: QuerySpec) {
   let request = supabase.from(spec.ref.table).select('*');
+  if (spec.ref.id) request = request.eq('id', spec.ref.id);
   for (const filter of spec.filters) {
     if (filter.op === '==') request = request.eq(filter.field, filter.value);
     else if (filter.op === 'in') request = request.in(filter.field, filter.value);
@@ -252,7 +253,17 @@ export async function getDocs(input: Ref | QuerySpec) {
 export function onSnapshot(input: Ref | QuerySpec, callback: (snapshot: any) => void, onError?: (error: any) => void) {
   const spec = 'ref' in input ? input as QuerySpec : { ref: input as Ref, filters: [] };
   let active = true;
-  const refresh = () => { runQuery(spec).then((result) => { if (active) callback(result); }).catch((error) => onError?.(error)); };
+  const refresh = () => {
+    runQuery(spec).then((result) => {
+      if (!active) return;
+      if (spec.ref.id) {
+        const row = result.docs[0];
+        callback({ exists: () => Boolean(row), data: () => row?.data() });
+      } else {
+        callback(result);
+      }
+    }).catch((error) => onError?.(error));
+  };
   refresh();
   const channel = supabase.channel(`compat-${spec.ref.table}-${Math.random()}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: spec.ref.table }, refresh)
