@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { signOut } from '../../lib/supabase';
+import { doc, getDoc } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import {
   Linking,
@@ -12,7 +12,7 @@ import {
   useColorScheme
 } from 'react-native';
 import { ThemedText, ThemedView } from '../../components/Themed';
-import { auth, db } from '../../firebase';
+import { auth, db } from '../../lib/supabase';
 
 export default function ReceiverSettingsScreen() {
   const router = useRouter();
