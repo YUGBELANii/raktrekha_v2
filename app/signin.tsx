@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { signInWithEmailAndPassword } from '../lib/supabase';
+import { doc, getDoc } from '../lib/supabase';
 import React, { useState } from 'react';
 import { StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
-import { auth, db } from '../firebase';
+import { auth, db } from '../lib/supabase';
 
 export default function SignInScreen() {
   const router = useRouter();

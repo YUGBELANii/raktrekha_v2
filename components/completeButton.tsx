@@ -1,8 +1,8 @@
 // components/CompleteButton.tsx
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, serverTimestamp, updateDoc } from "../lib/supabase";
 import React, { useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity } from "react-native";
-import { db } from "../firebase";
+import { db } from "../lib/supabase";
 
 type CompleteButtonProps = {
   requestId: string;

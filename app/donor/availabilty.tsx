@@ -1,7 +1,7 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
-import { getAuth } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { getAuth } from '../../lib/supabase';
+import { doc, getDoc, setDoc } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import {
   Platform,
@@ -12,7 +12,7 @@ import {
   useWindowDimensions
 } from 'react-native';
 import { ThemedText, ThemedView, useThemeColor } from '../../components/Themed';
-import { db } from '../../firebase';
+import { db } from '../../lib/supabase';
 
 type DayAvailability = {
   available: boolean;

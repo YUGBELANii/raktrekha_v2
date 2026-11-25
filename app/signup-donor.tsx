@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from '../lib/supabase';
+import { doc, setDoc } from '../lib/supabase';
 import React, { useState } from 'react';
 import {
   KeyboardAvoidingView,
@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
   useColorScheme,
 } from 'react-native';
-import { auth, db } from '../firebase';
+import { auth, db } from '../lib/supabase';
 
 export default function DonorSignUp() {
   const router = useRouter();
@@ -31,13 +31,13 @@ export default function DonorSignUp() {
       return;
     }
 
-    if (isNaN(Number(age)) || Number(age) < 1) {
+    if (isNaN(Number(age)) || Number(age) < 1 || Number(age) > 120) {
       alert('Please enter a valid age');
       return;
     }
 
     try {
-      const userCred = await createUserWithEmailAndPassword(auth, String(email), String(password));
+      const userCred = await createUserWithEmailAndPassword(auth, String(email), String(password), { role: 'donor', name: String(name), age: Number(age), bloodGroup, location, availability, number: String(number) });
       const uid = userCred.user.uid;
 
       await setDoc(doc(db, 'users', uid), {

@@ -1,12 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedCard, ThemedText, ThemedView } from '../../components/Themed';
 import { ms, vs } from '../../constants/Layout';
-import { db } from '../../firebase';
+import { db } from '../../lib/supabase';
 
 export default function DonorNearbyCamps() {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

@@ -49,3 +49,22 @@ Join our community of developers creating universal apps.
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 # raktrekha_v2
+
+## Supabase setup
+
+The app now uses Supabase Auth, Postgres, and Realtime.
+
+1. Copy `.env.example` to `.env`.
+2. In the Supabase dashboard for project `potofgsfblddowjddant`, open **Connect** and copy the project publishable key into `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. The project URL is already shown in the example file.
+3. Install dependencies and start Expo:
+
+   ```bash
+   npm install
+   npx expo start
+   ```
+
+4. For the first registration test, verify that Supabase email confirmation is enabled. If it is, complete the email verification link before signing in. The app creates the profile and private contact row from signup metadata.
+
+Never put a Supabase service-role/secret key in the Expo app. Only the publishable key belongs in `EXPO_PUBLIC_*` variables.
+
+Database migrations are in `supabase/migrations`. The `profiles` table stores public profile fields, `profile_contacts` stores private phone details, `blood_requests` stores requests, and `user_settings` stores per-user privacy preferences.

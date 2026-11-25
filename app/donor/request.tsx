@@ -1,7 +1,7 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import MessageButton from '@/components/MessageBtn';
 import { useRouter } from 'expo-router';
-import { onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged } from '../../lib/supabase';
 import {
   collection,
   doc,
@@ -11,7 +11,7 @@ import {
   query,
   updateDoc,
   where,
-} from 'firebase/firestore';
+} from '../../lib/supabase';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -26,7 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CompleteButton from '../../components/completeButton';
 import { ThemedText, ThemedView } from '../../components/Themed';
 import { ms, vs } from '../../constants/Layout';
-import { auth, db } from '../../firebase';
+import { auth, db } from '../../lib/supabase';
 
 // ✅ Fixed interface
 interface Request {
