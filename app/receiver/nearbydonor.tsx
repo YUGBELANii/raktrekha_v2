@@ -1,52 +1,29 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { collection, getDocs, query, where } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Dimensions,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme,
-} from 'react-native';
-import { Button, Menu, Provider as PaperProvider } from 'react-native-paper';
-import { ThemedText, ThemedView } from '../../components/Themed';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppCard, AppInput, BloodGroupBadge, EmptyState, LoadingState } from '@/components/ui';
+import { spacing, typography, radii } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 import { db } from '../../lib/supabase';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { width } = Dimensions.get('window');
 const bloodGroups = ['All', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 export default function NearbyDonorsScreen() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const router = useRouter();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-
+  const { colors } = useAppTheme();
   const [donors, setDonors] = useState<any[]>([]);
   const [selectedGroup, setSelectedGroup] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showFilter, setShowFilter] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [menuVisible, setMenuVisible] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
 
   useEffect(() => {
     const fetchDonors = async () => {
       try {
         const q = query(collection(db, 'users'), where('role', '==', 'donor'));
         const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-          console.log('No donor users found in the database.');
-        }
-
-        const donorList = querySnapshot.docs.map((doc) => {
-          console.log('Fetched donor:', doc.data());
-          return doc.data();
-        });
-
+        const donorList = querySnapshot.docs.map((d: any) => d.data());
         setDonors(donorList);
       } catch (error) {
         console.error('Error fetching donors:', error);
@@ -54,160 +31,100 @@ export default function NearbyDonorsScreen() {
         setLoading(false);
       }
     };
-
     fetchDonors();
   }, []);
 
   const filteredDonors = donors.filter((donor) => {
     const matchGroup = selectedGroup === 'All' || donor.bloodGroup === selectedGroup;
-    const matchSearch =
-      donor.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      donor.city?.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const matchSearch = donor.name?.toLowerCase().includes(q) || donor.city?.toLowerCase().includes(q) || donor.location?.toLowerCase().includes(q);
     return matchGroup && matchSearch;
   });
 
   return (
-    <PaperProvider>
-      <ThemedView style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ paddingBottom: 100, paddingHorizontal: 20 }}>
-          <ThemedText style={styles.header}>Nearby Donors</ThemedText>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>FIND DONORS</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Nearby donors</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Search by name, city, or blood group.</Text>
 
-          {/* 🔍 Search + Filter Toggle */}
-          <ThemedView style={styles.searchRow}>
-            <TextInput
-              placeholder="Search by name or city"
-              placeholderTextColor={isDark ? '#aaa' : '#666'}
-              style={[
-                styles.searchInput,
-                {
-                  backgroundColor: isDark ? '#333' : '#f2f2f2',
-                  color: isDark ? '#fff' : '#000',
-                },
-              ]}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
-            <TouchableOpacity onPress={() => setShowFilter(!showFilter)}>
-              <Ionicons name="filter" size={24} color="#e53935" style={styles.filterIcon} />
-            </TouchableOpacity>
-          </ThemedView>
+        <View style={styles.searchRow}>
+          <View style={{ flex: 1 }}>
+            <AppInput label="Search" placeholder="Name or city" value={searchQuery} onChangeText={setSearchQuery} containerStyle={{ marginBottom: 0 }} />
+          </View>
+          <Pressable style={[styles.filterBtn, { backgroundColor: colors.surface, borderColor: colors.border }]} onPress={() => setFilterOpen(true)}>
+            <Ionicons name="options-outline" size={20} color={colors.primary} />
+          </Pressable>
+        </View>
 
-          {/* 🔽 Blood Group Dropdown */}
-          {showFilter && (
-            <ThemedView style={{ marginBottom: 10 }}>
-              <Menu
-                visible={menuVisible}
-                onDismiss={() => setMenuVisible(false)}
-                anchor={
-                  <Button
-                    mode="outlined"
-                    onPress={() => setMenuVisible(true)}
-                    textColor={isDark ? '#fff' : '#000'}
-                    buttonColor={isDark ? '#444' : '#f2f2f2'}
-                  >
-                    {selectedGroup}
-                  </Button>
-                }
-                contentStyle={{ backgroundColor: isDark ? '#333' : '#fff' }}
-              >
-                {bloodGroups.map((group) => (
-                  <Menu.Item
-                    key={group}
-                    onPress={() => {
-                      setSelectedGroup(group);
-                      setMenuVisible(false);
-                    }}
-                    title={group}
-                    titleStyle={{ color: isDark ? '#fff' : '#000' }}
-                  />
-                ))}
-              </Menu>
-            </ThemedView>
-          )}
+        <View style={styles.filterSummary}>
+          <Text style={[styles.filterText, { color: colors.textMuted }]}>Blood group: <Text style={{ color: colors.text, fontWeight: '600' }}>{selectedGroup}</Text></Text>
+        </View>
 
-          {/* 🔄 Loading / No Donors / List */}
-          {loading ? (
-            <ActivityIndicator size="large" color="#e53935" style={{ marginTop: 40 }} />
-          ) : filteredDonors.length === 0 ? (
-            <ThemedText style={styles.noDonors}>No donors found.</ThemedText>
-          ) : (
-            filteredDonors.map((donor, index) => (
-              <ThemedView
-                key={index}
-                style={[
-                  styles.card,
-                  { backgroundColor: isDark ? '#2a2a2a' : '#fff0f0' },
-                ]}
-              >
-                <ThemedText style={styles.name}>{donor.name}</ThemedText>
-                <ThemedText>Blood Group: {donor.bloodGroup}</ThemedText>
-                <ThemedText>Phone: {donor.number}</ThemedText>
-                <ThemedText>City: {donor.location}</ThemedText>
-                <TouchableOpacity style={styles.contactBtn}>
-                  <ThemedText style={styles.btnText}>Contact</ThemedText>
-                </TouchableOpacity>
-              </ThemedView>
-            ))
-          )}
-        </ScrollView>
-      </ThemedView>
-    </PaperProvider>
+        {loading ? (
+          <LoadingState message="Loading donors..." />
+        ) : filteredDonors.length === 0 ? (
+          <AppCard><EmptyState icon="people-outline" title="No donors found" message="Try adjusting your search or blood group filter." /></AppCard>
+        ) : (
+          filteredDonors.map((donor, index) => (
+            <AppCard key={index} style={styles.card}>
+              <View style={styles.cardTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.name, { color: colors.text }]}>{donor.name || 'Donor'}</Text>
+                  <Text style={[styles.meta, { color: colors.textMuted }]}>{donor.location || donor.city || 'Location not specified'}</Text>
+                </View>
+                <BloodGroupBadge group={donor.bloodGroup || '—'} size="sm" />
+              </View>
+              <View style={[styles.detailRow, { borderTopColor: colors.border }]}>
+                <View style={styles.detail}><Ionicons name="location-outline" size={15} color={colors.textMuted} /><Text style={[styles.detailText, { color: colors.text }]}>{donor.city || donor.location || 'Location not specified'}</Text></View>
+              </View>
+            </AppCard>
+          ))
+        )}
+
+        <Modal visible={filterOpen} transparent animationType="fade" onRequestClose={() => setFilterOpen(false)}>
+          <Pressable style={styles.modalOverlay} onPress={() => setFilterOpen(false)}>
+            <Pressable style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Blood group</Text>
+              <View style={styles.chips}>
+                {bloodGroups.map((group) => {
+                  const active = selectedGroup === group;
+                  return (
+                    <Pressable key={group} onPress={() => { setSelectedGroup(group); setFilterOpen(false); }} style={[styles.chip, { backgroundColor: active ? colors.primarySoft : colors.background, borderColor: active ? colors.primary : colors.border }]}>
+                      <Text style={[styles.chipText, { color: active ? colors.primary : colors.text }]}>{group}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </Pressable>
+          </Pressable>
+        </Modal>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginTop: 20,
-    color: '#e53935',
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 14,
-    marginBottom: 10,
-  },
-  searchInput: {
-    flex: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    height: 40,
-    fontSize: 14,
-  },
-  filterIcon: {
-    marginLeft: 12,
-  },
-  card: {
-    marginTop: 14,
-    borderRadius: 10,
-    padding: 16,
-    elevation: 2,
-    shadowColor: '#e53935',
-    shadowOpacity: 0.1,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-  },
-  name: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  contactBtn: {
-    marginTop: 10,
-    backgroundColor: '#e53935',
-    paddingVertical: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  btnText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  noDonors: {
-    textAlign: 'center',
-    marginTop: 20,
-    fontSize: 15,
-    color: '#888',
-  },
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  eyebrow: { ...typography.caption, fontWeight: '700', letterSpacing: 1.1, marginBottom: spacing.xs },
+  title: { ...typography.title, fontSize: 30, lineHeight: 36, marginBottom: spacing.sm },
+  subtitle: { ...typography.body, marginBottom: spacing.xl },
+  searchRow: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-end' },
+  filterBtn: { width: 52, height: 52, borderRadius: radii.md, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg },
+  filterSummary: { marginBottom: spacing.lg },
+  filterText: { ...typography.bodySm },
+  card: { marginBottom: spacing.lg },
+  cardTop: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
+  name: { ...typography.h3, fontSize: 18 },
+  meta: { ...typography.bodySm, marginTop: 2 },
+  detailRow: { marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1 },
+  detail: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  detailText: { ...typography.bodySm },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(32,33,36,0.45)', justifyContent: 'center', padding: spacing.xl },
+  modalCard: { borderRadius: radii.lg, borderWidth: 1, padding: spacing.xl },
+  modalTitle: { ...typography.h3, marginBottom: spacing.lg },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: { paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radii.pill, borderWidth: 1 },
+  chipText: { ...typography.bodySm, fontWeight: '600' },
 });

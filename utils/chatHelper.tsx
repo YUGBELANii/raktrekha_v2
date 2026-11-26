@@ -1,39 +1,27 @@
-import { collection, doc, getDocs, query, setDoc, where } from "firebase/firestore";
-import { db } from "../firebase";
+import { supabase } from '../lib/supabase';
 
-// This function either finds an existing chat or creates a new one
 export const createOrFetchChatId = async (userId: string, otherUserId: string) => {
   try {
-    const chatsRef = collection(db, "chats");
-    const q = query(
-      chatsRef,
-      where("participants", "array-contains", userId)
-    );
+    const { data: existing, error: fetchError } = await supabase
+      .from('chats')
+      .select('id, participants')
+      .contains('participants', [userId]);
 
-    const snapshot = await getDocs(q);
-    let existingChatId = null;
+    if (fetchError) throw fetchError;
 
-    snapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      if (data.participants.includes(otherUserId)) {
-        existingChatId = docSnap.id;
-      }
-    });
+    const match = (existing || []).find((chat: any) => Array.isArray(chat.participants) && chat.participants.includes(otherUserId));
+    if (match) return match.id;
 
-    if (existingChatId) {
-      return existingChatId;
-    }
+    const { data: created, error: createError } = await supabase
+      .from('chats')
+      .insert({ participants: [userId, otherUserId], created_at: new Date().toISOString() })
+      .select('id')
+      .single();
 
-    // If no chat exists, create one
-    const newChatRef = doc(chatsRef);
-    await setDoc(newChatRef, {
-      participants: [userId, otherUserId],
-      createdAt: new Date(),
-    });
-
-    return newChatRef.id;
+    if (createError) throw createError;
+    return created.id;
   } catch (error) {
-    console.error("Error creating/fetching chat:", error);
+    console.error('Error creating/fetching chat:', error);
     throw error;
   }
 };

@@ -1,23 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppButton, AppInput } from '@/components/ui';
+import { spacing, typography, radii } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 
 export default function SignUpScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors } = useAppTheme();
 
   const [role, setRole] = useState<'donor' | 'patient' | null>(null);
   const [name, setName] = useState('');
@@ -26,11 +18,15 @@ export default function SignUpScreen() {
   const [confirm, setConfirm] = useState('');
   const [secure, setSecure] = useState(true);
   const [number, setNumber] = useState('');
-  const [agree, setAgree] = useState(false); // ✅ Checkbox state
+  const [agree, setAgree] = useState(false);
 
   const handleContinue = () => {
     if (!role || !name || !email || !password || !confirm || !number) {
       alert('Please fill all fields and select a role.');
+      return;
+    }
+    if (password !== confirm) {
+      alert('Passwords do not match.');
       return;
     }
     if (!agree) {
@@ -46,138 +42,142 @@ export default function SignUpScreen() {
   };
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[
-          styles.container,
-          { backgroundColor: isDark ? '#000' : '#fff' },
-        ]}
-      >
-        <Text style={[styles.title, { color: '#e53935' }]}>Create Account</Text>
-
-        {/* Role Selection */}
-        <View style={styles.roleContainer}>
-          {['donor', 'patient'].map((r) => (
-            <TouchableOpacity
-              key={r}
-              style={[
-                styles.roleButton,
-                { borderColor: isDark ? '#555' : '#ccc' },
-                role === r && { backgroundColor: '#e53935', borderColor: '#e53935' },
-              ]}
-              onPress={() => setRole(r as 'donor' | 'patient')}
-            >
-              <Text
-                style={[
-                  styles.roleText,
-                  { color: isDark ? '#ccc' : '#555' },
-                  role === r && { color: '#fff' },
-                ]}
-              >
-                {r === 'donor' ? "I'm a Donor" : 'I Need Blood'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Name */}
-        <TextInput
-          placeholder="Full Name"
-          placeholderTextColor={isDark ? '#888' : '#aaa'}
-          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
-          value={name}
-          onChangeText={setName}
-        />
-
-        {/* Email */}
-        <TextInput
-          placeholder="Email"
-          placeholderTextColor={isDark ? '#888' : '#aaa'}
-          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-
-        {/* Mobile Number */}
-        <TextInput
-          placeholder="Mobile Number"
-          placeholderTextColor={isDark ? '#888' : '#aaa'}
-          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
-          value={number}
-          onChangeText={setNumber}
-          keyboardType="phone-pad"
-        />
-
-        {/* Password */}
-        <View style={[styles.passwordContainer, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2' }]}>
-          <TextInput
-            placeholder="Password"
-            placeholderTextColor={isDark ? '#888' : '#aaa'}
-            style={[styles.passwordInput, { color: isDark ? '#fff' : '#000' }]}
-            secureTextEntry={secure}
-            value={password}
-            onChangeText={setPassword}
-          />
-          <Pressable onPress={() => setSecure(!secure)}>
-            <Ionicons name={secure ? 'eye-off-outline' : 'eye-outline'} size={22} color={isDark ? '#aaa' : '#888'} />
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+          <Pressable onPress={() => router.back()} style={[styles.back, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Ionicons name="arrow-back" size={20} color={colors.text} />
           </Pressable>
-        </View>
 
-        {/* Confirm Password */}
-        <TextInput
-          placeholder="Confirm Password"
-          placeholderTextColor={isDark ? '#888' : '#aaa'}
-          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
-          secureTextEntry
-          value={confirm}
-          onChangeText={setConfirm}
-        />
+          <Text style={[styles.eyebrow, { color: colors.primary }]}>GET STARTED</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Create your account</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>Choose your role and enter your details to continue.</Text>
 
-        {/* ✅ Terms & Privacy Checkbox */}
-        <TouchableOpacity
-          style={styles.checkboxContainer}
-          onPress={() => setAgree(!agree)}
-        >
-          <Ionicons name={agree ? 'checkbox' : 'square-outline'} size={22} color="#e53935" />
-          <Text style={[styles.checkboxText, { color: isDark ? '#ccc' : '#555' }]}>
-            I agree to the{' '}
-            <Text style={styles.link} onPress={() => router.push('./terms')}>Terms & Conditions</Text> and{' '}
-            <Text style={styles.link} onPress={() => router.push('./privacy-policy')}>Privacy Policy</Text>
-          </Text>
-        </TouchableOpacity>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.sectionLabel, { color: colors.text }]}>I am signing up as</Text>
+            <View style={styles.roleContainer}>
+              {(['donor', 'patient'] as const).map((r) => {
+                const selected = role === r;
+                return (
+                  <Pressable
+                    key={r}
+                    onPress={() => setRole(r)}
+                    style={[
+                      styles.roleButton,
+                      {
+                        borderColor: selected ? colors.primary : colors.border,
+                        backgroundColor: selected ? colors.primarySoft : colors.background,
+                      },
+                    ]}
+                  >
+                    <Ionicons
+                      name={r === 'donor' ? 'heart-outline' : 'medkit-outline'}
+                      size={18}
+                      color={selected ? colors.primary : colors.textMuted}
+                    />
+                    <Text style={[styles.roleText, { color: selected ? colors.primary : colors.text }]}>
+                      {r === 'donor' ? 'Donor' : 'Receiver'}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
 
-        {/* Continue Button */}
-        <TouchableOpacity style={styles.button} onPress={handleContinue}>
-          <Text style={styles.buttonText}>Continue</Text>
-        </TouchableOpacity>
+            <AppInput label="Full Name" placeholder="Enter your full name" value={name} onChangeText={setName} />
+            <AppInput
+              label="Email"
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <AppInput
+              label="Mobile Number"
+              placeholder="Enter your mobile number"
+              value={number}
+              onChangeText={setNumber}
+              keyboardType="phone-pad"
+            />
+            <AppInput
+              label="Password"
+              placeholder="Create a password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={secure}
+              right={
+                <Pressable onPress={() => setSecure(!secure)} hitSlop={8}>
+                  <Ionicons name={secure ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
+                </Pressable>
+              }
+            />
+            <AppInput
+              label="Confirm Password"
+              placeholder="Re-enter your password"
+              value={confirm}
+              onChangeText={setConfirm}
+              secureTextEntry
+            />
 
-        {/* Login Redirect */}
-        <TouchableOpacity onPress={() => router.push('/signin')}>
-          <Text style={[styles.linkText, { color: isDark ? '#ccc' : '#555' }]}>
-            Already have an account? Log In
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+            <Pressable style={styles.checkboxContainer} onPress={() => setAgree(!agree)}>
+              <Ionicons name={agree ? 'checkbox' : 'square-outline'} size={22} color={agree ? colors.primary : colors.textMuted} />
+              <Text style={[styles.checkboxText, { color: colors.textMuted }]}>
+                I agree to the{' '}
+                <Text style={{ color: colors.primary, fontWeight: '600' }} onPress={() => router.push('./terms')}>
+                  Terms & Conditions
+                </Text>{' '}
+                and{' '}
+                <Text style={{ color: colors.primary, fontWeight: '600' }} onPress={() => router.push('./privacy-policy')}>
+                  Privacy Policy
+                </Text>
+              </Text>
+            </Pressable>
+
+            <AppButton label="Continue" onPress={handleContinue} />
+          </View>
+
+          <Pressable onPress={() => router.push('/signin')} style={styles.linkWrap}>
+            <Text style={[styles.linkText, { color: colors.textMuted }]}>
+              Already have an account? <Text style={{ color: colors.primary, fontWeight: '700' }}>Log In</Text>
+            </Text>
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, paddingHorizontal: 24, justifyContent: 'center', paddingVertical: 32 },
-  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 24, textAlign: 'center' },
-  roleContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  roleButton: { flex: 1, paddingVertical: 12, marginHorizontal: 5, borderWidth: 1, borderRadius: 10, alignItems: 'center' },
-  roleText: { fontSize: 16, fontWeight: '500' },
-  input: { padding: 14, borderRadius: 10, marginBottom: 14, fontSize: 16 },
-  passwordContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderRadius: 10, marginBottom: 14 },
-  passwordInput: { flex: 1, paddingVertical: 14, fontSize: 16 },
-  checkboxContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  checkboxText: { fontSize: 14, marginLeft: 8, flex: 1 },
-  link: { color: '#e53935', textDecorationLine: 'underline' },
-  button: { backgroundColor: '#e53935', paddingVertical: 14, borderRadius: 10, alignItems: 'center', marginTop: 10 },
-  buttonText: { color: '#fff', fontSize: 18, fontWeight: '600' },
-  linkText: { fontSize: 14, textAlign: 'center', marginTop: 16 },
+  safe: { flex: 1 },
+  content: { flexGrow: 1, padding: spacing.xl, paddingBottom: spacing.xxxl },
+  back: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
+  },
+  eyebrow: { ...typography.caption, fontWeight: '700', letterSpacing: 1.1, marginBottom: spacing.sm },
+  title: { ...typography.title, marginBottom: spacing.sm },
+  subtitle: { ...typography.body, marginBottom: spacing.xl },
+  card: { borderWidth: 1, borderRadius: 20, padding: spacing.xl },
+  sectionLabel: { ...typography.caption, fontSize: 13, marginBottom: spacing.sm },
+  roleContainer: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.lg },
+  roleButton: {
+    flex: 1,
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: radii.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  roleText: { ...typography.button, fontSize: 15 },
+  checkboxContainer: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm, marginBottom: spacing.lg },
+  checkboxText: { ...typography.bodySm, flex: 1, lineHeight: 20 },
+  linkWrap: { alignItems: 'center', marginTop: spacing.xl },
+  linkText: { ...typography.bodySm },
 });

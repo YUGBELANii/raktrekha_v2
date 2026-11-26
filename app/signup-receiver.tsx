@@ -2,28 +2,24 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { createUserWithEmailAndPassword } from '../lib/supabase';
 import { doc, setDoc } from '../lib/supabase';
 import React, { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { AppButton, AppInput } from '@/components/ui';
+import { spacing, typography } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 import { auth, db } from '../lib/supabase';
 
 export default function ReceiverSignUp() {
   const router = useRouter();
-  const { name, email, password , number} = useLocalSearchParams();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { name, email, password, number } = useLocalSearchParams();
+  const { colors } = useAppTheme();
 
   const [bloodGroup, setBloodGroup] = useState('');
   const [condition, setCondition] = useState('');
   const [urgency, setUrgency] = useState('');
   const [age, setAge] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleReceiverSignUp = async () => {
     if (!bloodGroup || !condition || !urgency || !age) {
@@ -31,14 +27,16 @@ export default function ReceiverSignUp() {
       return;
     }
 
-    if (isNaN(Number(age)) || Number(age) < 1 || Number(age) > 120) {
+    if (isNaN(Number(age)) || Number(age) < 1) {
       alert('Please enter a valid age');
       return;
     }
 
     try {
-      const userCred = await createUserWithEmailAndPassword(auth, String(email), String(password), { role: 'patient', name: String(name), age: Number(age), bloodGroup, condition, urgency, number: String(number) });
-      const uid = userCred.user.uid;
+      setLoading(true);
+      const userCred = await createUserWithEmailAndPassword(auth, String(email), String(password));
+      const uid = userCred.user?.uid;
+      if (!uid) { alert("Account created, but no session was returned. Please sign in."); return; }
 
       await setDoc(doc(db, 'users', uid), {
         uid,
@@ -54,87 +52,45 @@ export default function ReceiverSignUp() {
       });
 
       alert('Receiver account created successfully!');
-      router.push('/receiver/home');
+      router.replace('/receiver/home');
     } catch (error: any) {
       console.error('Receiver Sign Up Error:', error);
       alert(error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScrollView contentContainerStyle={[styles.container, { backgroundColor: isDark ? '#121212' : '#fff' }]}>
-        <Text style={[styles.title, { color: '#e53935' }]}>Patient Details</Text>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <Pressable onPress={() => router.back()} style={[styles.back, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Ionicons name="arrow-back" size={20} color={colors.text} />
+          </Pressable>
+          <Text style={[styles.eyebrow, { color: colors.primary }]}>RECEIVER PROFILE</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Complete your receiver details</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>This information helps donors understand your needs quickly.</Text>
 
-        <TextInput
-          placeholder="Age"
-          placeholderTextColor={isDark ? '#aaa' : '#666'}
-          keyboardType="numeric"
-          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
-          value={age}
-          onChangeText={setAge}
-        />
-        <TextInput
-          placeholder="Blood Group (e.g. A+, B-, AB+)"
-          placeholderTextColor={isDark ? '#aaa' : '#666'}
-          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
-          value={bloodGroup}
-          onChangeText={setBloodGroup}
-        />
-        <TextInput
-          placeholder="Medical Condition (e.g. Thalassemia, Surgery, Accident)"
-          placeholderTextColor={isDark ? '#aaa' : '#666'}
-          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
-          value={condition}
-          onChangeText={setCondition}
-        />
-        <TextInput
-          placeholder="Urgency (e.g. Immediate, Within 2 Days)"
-          placeholderTextColor={isDark ? '#aaa' : '#666'}
-          style={[styles.input, { backgroundColor: isDark ? '#1e1e1e' : '#f2f2f2', color: isDark ? '#fff' : '#000' }]}
-          value={urgency}
-          onChangeText={setUrgency}
-        />
-
-        <TouchableOpacity style={styles.button} onPress={handleReceiverSignUp}>
-          <Text style={styles.buttonText}>Finish Sign Up</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <AppInput label="Age" placeholder="Enter your age" keyboardType="numeric" value={age} onChangeText={setAge} />
+            <AppInput label="Blood Group" placeholder="e.g. A+, B-, AB+" value={bloodGroup} onChangeText={setBloodGroup} autoCapitalize="characters" />
+            <AppInput label="Medical Condition" placeholder="e.g. Surgery, Thalassemia" value={condition} onChangeText={setCondition} />
+            <AppInput label="Urgency" placeholder="e.g. Immediate, Within 2 days" value={urgency} onChangeText={setUrgency} />
+            <AppButton label="Create Receiver Account" onPress={handleReceiverSignUp} loading={loading} />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 24,
-    flexGrow: 1,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  input: {
-    padding: 14,
-    borderRadius: 10,
-    marginBottom: 14,
-    fontSize: 16,
-  },
-  button: {
-    backgroundColor: '#e53935',
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
+  safe: { flex: 1 },
+  content: { flexGrow: 1, padding: spacing.xl, paddingBottom: spacing.xxxl },
+  back: { width: 40, height: 40, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xl },
+  eyebrow: { ...typography.caption, fontWeight: '700', letterSpacing: 1.1, marginBottom: spacing.sm },
+  title: { ...typography.title, marginBottom: spacing.sm },
+  subtitle: { ...typography.body, marginBottom: spacing.xl },
+  card: { borderWidth: 1, borderRadius: 20, padding: spacing.xl },
 });

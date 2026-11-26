@@ -1,14 +1,14 @@
 import React from 'react';
 import { StyleSheet, Text, TextProps } from 'react-native';
-import { ms } from '../../constants/Layout'; // ✅ import scaling
+import { typography } from '@/constants/theme';
 import { useThemeColor } from './Themed';
 
 type ThemedTextProps = TextProps & {
-  type?: 'title' | 'subtitle' | 'button' | 'default';
+  type?: 'title' | 'subtitle' | 'button' | 'default' | 'caption' | 'muted';
 };
 
 export function ThemedText({ style, type = 'default', ...props }: ThemedTextProps) {
-  const color = useThemeColor({}, 'text');
+  const color = useThemeColor({}, type === 'muted' ? 'textMuted' : 'text');
 
   return (
     <Text
@@ -18,6 +18,8 @@ export function ThemedText({ style, type = 'default', ...props }: ThemedTextProp
         type === 'title' && styles.title,
         type === 'subtitle' && styles.subtitle,
         type === 'button' && styles.button,
+        type === 'caption' && styles.caption,
+        type === 'muted' && styles.muted,
         style,
       ]}
       {...props}
@@ -27,18 +29,21 @@ export function ThemedText({ style, type = 'default', ...props }: ThemedTextProp
 
 const styles = StyleSheet.create({
   base: {
-    fontSize: ms(14),   // ✅ scaled default
+    ...typography.bodySm,
   },
   title: {
-    fontSize: ms(20),   // ✅ scaled title
-    fontWeight: '700',
+    ...typography.h2,
   },
   subtitle: {
-    fontSize: ms(16),   // ✅ scaled subtitle
-    fontWeight: '600',
+    ...typography.h3,
   },
   button: {
-    fontSize: ms(15),   // ✅ scaled button text
-    fontWeight: '600',
+    ...typography.button,
+  },
+  caption: {
+    ...typography.caption,
+  },
+  muted: {
+    ...typography.bodySm,
   },
 });

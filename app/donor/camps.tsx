@@ -1,31 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { collection, onSnapshot } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
-import { Linking, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ThemedCard, ThemedText, ThemedView } from '../../components/Themed';
-import { ms, vs } from '../../constants/Layout';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppCard, EmptyState, LoadingState } from '@/components/ui';
+import { spacing, typography, radii } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 import { db } from '../../lib/supabase';
 
 export default function DonorNearbyCamps() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
   const [camps, setCamps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const campCollection = collection(db, 'bloodCamps');
-
-    // ✅ Real-time Firestore listener
     const unsubscribe = onSnapshot(
       campCollection,
       (snapshot) => {
-        const campList = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const campList = snapshot.docs.map((d: any) => ({ id: d.id, ...d.data() }));
         setCamps(campList);
         setLoading(false);
       },
@@ -34,8 +27,7 @@ export default function DonorNearbyCamps() {
         setLoading(false);
       }
     );
-
-    return () => unsubscribe(); // ✅ Cleanup listener on unmount
+    return () => unsubscribe();
   }, []);
 
   const openGoogleMaps = (address: string) => {
@@ -45,86 +37,67 @@ export default function DonorNearbyCamps() {
   };
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top + vs(10) }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: vs(120) }}>
-        <ThemedText type="title" style={styles.header}>Active Blood Donation Camps</ThemedText>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>BLOOD CAMPS</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Nearby donation camps</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Find active blood donation camps and get directions.</Text>
 
         {loading ? (
-          <ThemedText style={styles.infoText}>⏳ Loading camps near you...</ThemedText>
+          <LoadingState message="Loading camps near you..." />
         ) : camps.length === 0 ? (
-          <ThemedText style={styles.infoText}>🚫 No active camps found near your location.</ThemedText>
+          <AppCard>
+            <EmptyState icon="location-outline" title="No active camps" message="There are no active blood donation camps right now." />
+          </AppCard>
         ) : (
           camps.map((camp) => (
-            <ThemedCard key={camp.id} style={styles.card}>
-              <ThemedText type="subtitle" style={styles.title}>{camp.name || 'Unnamed Camp'}</ThemedText>
-              <ThemedText style={styles.hosted}>
-                Hosted by: {camp.hostedBy || 'N/A'}{"\n"}
-                Location: {camp.location || 'N/A'}
-              </ThemedText>
+            <AppCard key={camp.id} style={styles.card}>
+              <View style={styles.cardTop}>
+                <View style={[styles.iconWrap, { backgroundColor: colors.primarySoft }]}>
+                  <Ionicons name="business-outline" size={20} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.campName, { color: colors.text }]}>{camp.name || 'Unnamed Camp'}</Text>
+                  <Text style={[styles.meta, { color: colors.textMuted }]}>Hosted by {camp.hostedBy || 'N/A'}</Text>
+                </View>
+              </View>
 
-              <ThemedView style={styles.row}>
-                <TouchableOpacity onPress={() => openGoogleMaps(camp.address)}>
-                  <Ionicons name="location" size={ms(22)} color="#e53935" />
-                </TouchableOpacity>
-                <ThemedText style={styles.distance}>
-                  {camp.distance ? `${camp.distance} away` : 'Distance unknown'}
-                </ThemedText>
-              </ThemedView>
+              <View style={[styles.infoRow, { borderColor: colors.border }]}>
+                <Ionicons name="location-outline" size={16} color={colors.textMuted} />
+                <Text style={[styles.infoText, { color: colors.text }]}>{camp.location || 'Location not available'}</Text>
+              </View>
+              <View style={[styles.infoRow, { borderColor: colors.border }]}>
+                <Ionicons name="navigate-outline" size={16} color={colors.textMuted} />
+                <Text style={[styles.infoText, { color: colors.text }]}>{camp.distance ? `${camp.distance} away` : 'Distance unknown'}</Text>
+              </View>
 
-              {camp.address && (
-                <TouchableOpacity onPress={() => openGoogleMaps(camp.address)}>
-                  <ThemedText style={styles.directions}>📍 Tap to get directions</ThemedText>
-                </TouchableOpacity>
-              )}
-            </ThemedCard>
+              {camp.address ? (
+                <Pressable style={[styles.dirBtn, { backgroundColor: colors.primarySoft }]} onPress={() => openGoogleMaps(camp.address)}>
+                  <Ionicons name="map-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.dirText, { color: colors.primary }]}>Get directions</Text>
+                </Pressable>
+              ) : null}
+            </AppCard>
           ))
         )}
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: ms(14) },
-  header: {
-    fontSize: ms(18),
-    fontWeight: '700',
-    textAlign: 'center',
-    marginVertical: vs(12),
-  },
-  card: {
-    marginBottom: vs(16),
-    borderRadius: ms(12),
-    padding: ms(14),
-  },
-  title: {
-    fontSize: ms(15),
-    fontWeight: '700',
-    marginBottom: vs(4),
-  },
-  hosted: {
-    fontSize: ms(13),
-    marginBottom: vs(6),
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: ms(6),
-    marginBottom: vs(4),
-  },
-  distance: {
-    fontSize: ms(12.5),
-    fontWeight: '500',
-  },
-  directions: {
-    fontSize: ms(13),
-    color: '#1a73e8',
-    textDecorationLine: 'underline',
-    marginTop: vs(6),
-  },
-  infoText: {
-    textAlign: 'center',
-    fontSize: ms(14),
-    marginTop: vs(20),
-  },
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  eyebrow: { ...typography.caption, fontWeight: '700', letterSpacing: 1.1, marginBottom: spacing.xs },
+  title: { ...typography.title, fontSize: 30, lineHeight: 36, marginBottom: spacing.sm },
+  subtitle: { ...typography.body, marginBottom: spacing.xl },
+  card: { marginBottom: spacing.lg },
+  cardTop: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md },
+  iconWrap: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  campName: { ...typography.h3, fontSize: 18, marginBottom: 2 },
+  meta: { ...typography.bodySm },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingTop: spacing.sm },
+  infoText: { ...typography.bodySm, flex: 1 },
+  dirBtn: { marginTop: spacing.lg, minHeight: 44, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: spacing.sm },
+  dirText: { ...typography.button, fontSize: 14 },
 });

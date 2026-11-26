@@ -3,34 +3,20 @@ import { useRouter } from 'expo-router';
 import { onAuthStateChanged } from '../../lib/supabase';
 import { addDoc, collection, doc, getDocs, limit, orderBy, query, Timestamp, updateDoc, where } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ms, s, vs } from 'react-native-size-matters';
-import CompleteButton from '../../components/completeButton';
-import { ThemedCard, ThemedText, ThemedView } from '../../components/Themed';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import CompleteButton from '@/components/completeButton';
+import { AppButton, AppCard, AppHeader, AppInput, StatusBadge } from '@/components/ui';
+import { spacing, typography, radii } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 import { auth, db } from '../../lib/supabase';
-type Request = {
-  id: string;
-  bloodGroup: string;
-  location?: string;
-  status: string;
-  createdAt?: any;
-};
+
+type Request = { id: string; bloodGroup: string; location?: string; status: string; createdAt?: any };
 
 export default function RequestBloodScreen() {
-  const insets = useSafeAreaInsets();   // ✅ Safe area insets
   const router = useRouter();
-const colorScheme = useColorScheme() ?? 'light'; // fallback to 'light' if undefined
-
+  const { colors } = useAppTheme();
   const [user, setUser] = useState<any>(null);
   const [name, setName] = useState('');
   const [bloodGroup, setBloodGroup] = useState('A+');
@@ -38,227 +24,140 @@ const colorScheme = useColorScheme() ?? 'light'; // fallback to 'light' if undef
   const [urgency, setUrgency] = useState('ASAP');
   const [location, setLocation] = useState('');
   const [notes, setNotes] = useState('');
-
   const [bgOpen, setBgOpen] = useState(false);
   const [urgencyOpen, setUrgencyOpen] = useState(false);
+  const [activeRequest, setActiveRequest] = useState<Request | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const bloodOptions = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map((bg) => ({ label: bg, value: bg }));
-  const urgencyOptions = [
-    { label: 'ASAP', value: 'ASAP' },
-    { label: 'Within 24 hours', value: '24hrs' },
-    { label: 'Later', value: 'later' },
-  ];
+  const urgencyOptions = [{ label: 'ASAP', value: 'ASAP' }, { label: 'Within 24 hours', value: '24hrs' }, { label: 'Later', value: 'later' }];
 
-  const [activeRequest, setActiveRequest] = useState<Request | null>(null);
-
-  // ✅ Auth check
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (currentUser) setUser(currentUser);
-      else {
-        Alert.alert('Login Required', 'You are not logged in.');
-        router.replace('/signin');
-      }
+      else { Alert.alert('Login Required', 'You are not logged in.'); router.replace('/signin'); }
     });
     return () => unsubscribe();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Fetch latest active request
   const fetchActiveRequest = async () => {
     if (!user) return;
     try {
-      const q = query(
-        collection(db, 'requests'),
-        where('patientId', '==', user.uid),
-        where('status', 'in', ['pending', 'accepted']),
-        orderBy('createdAt', 'desc'),
-        limit(1)
-      );
+      const q = query(collection(db, 'requests'), where('patientId', '==', user.uid), where('status', 'in', ['pending', 'accepted']), orderBy('createdAt', 'desc'), limit(1));
       const snapshot = await getDocs(q);
       if (!snapshot.empty) {
         const docSnap = snapshot.docs[0];
         setActiveRequest({ id: docSnap.id, ...(docSnap.data() as Omit<Request, 'id'>) });
-      } else {
-        setActiveRequest(null);
-      }
-    } catch (err) {
-      console.error('Error fetching active request:', err);
-    }
+      } else setActiveRequest(null);
+    } catch (err) { console.error('Error fetching active request:', err); }
   };
 
-  useEffect(() => {
-    fetchActiveRequest();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  useEffect(() => { fetchActiveRequest(); }, [user]);
 
-  // ✅ Submit new request
   const handleSubmit = async () => {
-    if (!name || !bloodGroup || !units || !location) {
-      Alert.alert('Missing Fields', 'Please fill all required fields.');
-      return;
-    }
-    if (!user) {
-      Alert.alert('Authentication Error', 'You must be logged in to make a request.');
-      return;
-    }
+    if (!name || !bloodGroup || !units || !location) { Alert.alert('Missing Fields', 'Please fill all required fields.'); return; }
+    if (!user) { Alert.alert('Authentication Error', 'You must be logged in to make a request.'); return; }
     try {
-      const requestData = {
+      setSubmitting(true);
+      await addDoc(collection(db, 'requests'), {
         requestId: `${user.uid}_${Date.now()}`,
         patientId: user.uid,
-        name,
-        bloodGroup,
-        units,
-        urgency,
-        location,
-        notes,
+        name, bloodGroup, units, urgency, location, notes,
         status: 'pending',
         createdAt: Timestamp.now(),
-      };
-      await addDoc(collection(db, 'requests'), requestData);
+      });
       Alert.alert('Request Submitted', 'Your request has been created successfully.');
       fetchActiveRequest();
     } catch (error) {
       console.error('Request submission failed:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // ✅ Cancel active request
   const handleCancelRequest = async () => {
     if (!activeRequest?.id) return;
     try {
-      const docRef = doc(db, 'requests', activeRequest.id);
-      await updateDoc(docRef, { status: 'cancelled' });
+      await updateDoc(doc(db, 'requests', activeRequest.id), { status: 'cancelled' });
       setActiveRequest(null);
       Alert.alert('Request Cancelled', 'Your active request has been cancelled.');
-    } catch (err) {
-      console.error('Cancel error:', err);
-    }
+    } catch (err) { console.error('Cancel error:', err); }
   };
 
+  const ddStyle = { backgroundColor: colors.surface, borderColor: colors.border, borderRadius: radii.md, minHeight: 52 };
+  const ddText = { color: colors.text, fontSize: 15 };
+  const ddContainer = { backgroundColor: colors.surface, borderColor: colors.border };
+
   return (
-    <SafeAreaView style={{ flex: 1, paddingTop: insets.top, backgroundColor: colorScheme === 'dark' ? '#000' : '#fff' }}>
-      <ThemedView style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          <ThemedText type="title" style={styles.header}>Request Blood</ThemedText>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>BLOOD REQUEST</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Request blood support</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Share clear details so donors can respond quickly.</Text>
 
-          {/* --- Request Form --- */}
-          <ThemedText style={styles.label}>Full Name</ThemedText>
-          <TextInput style={[styles.input, getInputStyle(colorScheme)]} value={name} onChangeText={setName} placeholder="Enter patient's full name" placeholderTextColor="#888" />
-
-          <ThemedText style={styles.label}>Blood Group</ThemedText>
-          <DropDownPicker
-            open={bgOpen}
-            value={bloodGroup}
-            items={bloodOptions}
-            setOpen={setBgOpen}
-            setValue={setBloodGroup}
-            setItems={() => {}}
-            style={getDropdownStyle(colorScheme)}
-            textStyle={{ color: colorScheme === 'dark' ? '#fff' : '#000', fontSize: ms(14) }}
-            dropDownContainerStyle={getDropdownContainer(colorScheme)}
-          />
-
-          <ThemedText style={styles.label}>Units Needed</ThemedText>
-          <TextInput style={[styles.input, getInputStyle(colorScheme)]} keyboardType="number-pad" value={units} onChangeText={setUnits} placeholder="e.g., 1 or 2" placeholderTextColor="#888" />
-
-          <ThemedText style={styles.label}>Urgency</ThemedText>
-          <DropDownPicker
-            open={urgencyOpen}
-            value={urgency}
-            items={urgencyOptions}
-            setOpen={setUrgencyOpen}
-            setValue={setUrgency}
-            setItems={() => {}}
-            style={getDropdownStyle(colorScheme)}
-            textStyle={{ color: colorScheme === 'dark' ? '#fff' : '#000', fontSize: ms(14) }}
-            dropDownContainerStyle={getDropdownContainer(colorScheme)}
-          />
-
-          <ThemedText style={styles.label}>Location</ThemedText>
-          <TextInput style={[styles.input, getInputStyle(colorScheme)]} value={location} onChangeText={setLocation} placeholder="City, Area, or Hospital" placeholderTextColor="#888" />
-
-          <ThemedText style={styles.label}>Additional Notes</ThemedText>
-          <TextInput style={[styles.input, { height: vs(80) }, getInputStyle(colorScheme)]} multiline value={notes} onChangeText={setNotes} placeholder="Any more details" placeholderTextColor="#888" />
-
-          <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-            <ThemedText style={styles.buttonText}>Request Now</ThemedText>
-          </TouchableOpacity>
-
-          {/* ✅ Active Request Card */}
-          {activeRequest && (
-            <ThemedCard style={styles.activeCard}>
-              <ThemedText style={styles.activeTitle}>Active Request</ThemedText>
-              <ThemedText style={styles.activeInfo}>📍 Hospital: {activeRequest.location || 'Unknown Hospital'}</ThemedText>
-              <ThemedText style={styles.activeInfo}>🩸 Blood Group: {activeRequest.bloodGroup}</ThemedText>
-              <ThemedText style={styles.activeStatus}>Status: {activeRequest.status}</ThemedText>
-              <TouchableOpacity style={styles.cancelBtn} onPress={handleCancelRequest}>
-                <ThemedText style={styles.cancelText}>Cancel Request</ThemedText>
-
-              </TouchableOpacity>
-                  <CompleteButton
-                requestId={activeRequest.id}
-                currentStatus={activeRequest.status as 'pending' | 'completed' | 'cancelled'}
-                onCompleted={fetchActiveRequest}
-              />
-            </ThemedCard>
-          )}
-
-          {/* --- Plan Future Request / History --- */}
-          <View style={styles.extraActionsContainer}>
-            <TouchableOpacity style={styles.extraAction} onPress={() => router.push('/receiver/advance-request')}>
-              <Ionicons name="calendar-outline" size={ms(22)} color="#e53935" />
-              <ThemedText style={styles.extraActionText}>Plan Future Request</ThemedText>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.extraAction} onPress={() => router.push('/receiver/request-history')}>
-              <Ionicons name="time-outline" size={ms(22)} color="#e53935" />
-              <ThemedText style={styles.extraActionText}>View Request History</ThemedText>
-            </TouchableOpacity>
+        <AppCard style={styles.card}>
+          <AppInput label="Full Name" value={name} onChangeText={setName} placeholder="Patient's full name" />
+          <Text style={[styles.label, { color: colors.text }]}>Blood Group</Text>
+          <View style={{ zIndex: 2000, marginBottom: spacing.lg }}>
+            <DropDownPicker open={bgOpen} value={bloodGroup} items={bloodOptions} setOpen={setBgOpen} setValue={setBloodGroup} setItems={() => {}} style={ddStyle} textStyle={ddText} dropDownContainerStyle={ddContainer} />
           </View>
-        </ScrollView>
-      </ThemedView>
+          <AppInput label="Units Needed" keyboardType="number-pad" value={units} onChangeText={setUnits} placeholder="e.g. 1 or 2" />
+          <Text style={[styles.label, { color: colors.text }]}>Urgency</Text>
+          <View style={{ zIndex: 1000, marginBottom: spacing.lg }}>
+            <DropDownPicker open={urgencyOpen} value={urgency} items={urgencyOptions} setOpen={setUrgencyOpen} setValue={setUrgency} setItems={() => {}} style={ddStyle} textStyle={ddText} dropDownContainerStyle={ddContainer} />
+          </View>
+          <AppInput label="Location" value={location} onChangeText={setLocation} placeholder="City, area, or hospital" />
+          <AppInput label="Additional Notes" value={notes} onChangeText={setNotes} placeholder="Any more details" multiline style={{ minHeight: 90, textAlignVertical: 'top' }} />
+          <AppButton label="Submit Request" onPress={handleSubmit} loading={submitting} />
+        </AppCard>
+
+        {activeRequest ? (
+          <AppCard style={styles.card}>
+            <View style={styles.activeHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Active request</Text>
+              <StatusBadge status={activeRequest.status} />
+            </View>
+            <Text style={[styles.meta, { color: colors.textMuted }]}>Location: {activeRequest.location || 'Unknown'}</Text>
+            <Text style={[styles.meta, { color: colors.textMuted }]}>Blood Group: {activeRequest.bloodGroup}</Text>
+            <View style={{ gap: spacing.sm, marginTop: spacing.lg }}>
+              <AppButton label="Cancel Request" variant="outline" onPress={handleCancelRequest} />
+              <CompleteButton requestId={activeRequest.id} currentStatus={activeRequest.status as 'pending' | 'completed' | 'cancelled'} onCompleted={fetchActiveRequest} />
+            </View>
+          </AppCard>
+        ) : null}
+
+        <AppCard style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.md }]}>More actions</Text>
+          <ActionLink icon="calendar-outline" label="Plan Future Request" onPress={() => router.push('/receiver/advance-request')} colors={colors} />
+          <ActionLink icon="time-outline" label="View Request History" onPress={() => router.push('/receiver/request-history')} colors={colors} />
+        </AppCard>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-// ✅ Styles
+function ActionLink({ icon, label, onPress, colors }: any) {
+  return (
+    <Pressable onPress={onPress} style={[styles.actionLink, { borderColor: colors.border }]}>
+      <Ionicons name={icon} size={20} color={colors.primary} />
+      <Text style={[styles.actionText, { color: colors.text }]}>{label}</Text>
+      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  scrollContent: { padding: s(16), paddingBottom: vs(100) },
-  header: { fontSize: ms(20), fontWeight: '700', marginBottom: vs(10) },
-  label: { fontSize: ms(15), fontWeight: '500', marginTop: vs(12) },
-  input: { borderWidth: 1, borderRadius: ms(8), marginTop: vs(6), paddingHorizontal: s(10), paddingVertical: vs(8), fontSize: ms(14) },
-  button: { backgroundColor: '#e53935', paddingVertical: vs(12), borderRadius: ms(10), alignItems: 'center', marginTop: vs(18) },
-  buttonText: { color: '#fff', fontSize: ms(16), fontWeight: '600' },
-
-  activeCard: { borderRadius: ms(12), padding: ms(14), marginTop: vs(18) },
-  activeTitle: { fontSize: ms(16), fontWeight: '700', marginBottom: vs(6) },
-  activeInfo: { fontSize: ms(14), marginBottom: vs(4) },
-  activeStatus: { fontSize: ms(14), marginTop: vs(4), fontWeight: '600', color: '#6a1b9a' },
-  cancelBtn: { backgroundColor: '#fff', borderWidth: 2, borderColor: '#e53935', paddingVertical: vs(8), borderRadius: 50, alignItems: 'center', marginTop: vs(10) },
-  cancelText: { color: '#e53935', fontWeight: '600', fontSize: ms(13) },
-
-  extraActionsContainer: { marginTop: vs(24) },
-  extraAction: { flexDirection: 'row', alignItems: 'center', padding: ms(12), borderRadius: ms(10), backgroundColor: '#f9f9f9', borderWidth: 1, borderColor: '#eee', marginBottom: vs(10) },
-  extraActionText: { fontSize: ms(14), fontWeight: '500', color: '#444', marginLeft: s(10) },
-});
-
-// ✅ Helper Styles
-const getInputStyle = (theme: string | null) => ({
-  backgroundColor: theme === 'dark' ? '#222' : '#fff',
-  color: theme === 'dark' ? '#fff' : '#000',
-  borderColor: '#ccc',
-});
-
-const getDropdownStyle = (theme: string | null) => ({
-  backgroundColor: theme === 'dark' ? '#333' : '#fff',
-  borderColor: '#ccc',
-  borderRadius: ms(8),
-});
-
-const getDropdownContainer = (theme: string | null) => ({
-  backgroundColor: theme === 'dark' ? '#333' : '#fff',
-  borderColor: '#ccc',
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  eyebrow: { ...typography.caption, fontWeight: '700', letterSpacing: 1.1, marginBottom: spacing.xs },
+  title: { ...typography.title, fontSize: 30, lineHeight: 36, marginBottom: spacing.sm },
+  subtitle: { ...typography.body, marginBottom: spacing.xl },
+  card: { marginBottom: spacing.lg },
+  label: { ...typography.caption, fontSize: 13, marginBottom: spacing.sm },
+  sectionTitle: { ...typography.h3, fontSize: 18 },
+  activeHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.sm },
+  meta: { ...typography.bodySm, marginTop: 2 },
+  actionLink: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md, borderTopWidth: 1 },
+  actionText: { ...typography.bodySm, fontWeight: '600', flex: 1 },
 });

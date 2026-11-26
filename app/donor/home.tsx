@@ -1,12 +1,12 @@
 import MessageButton from '@/components/MessageBtn';
-import { ThemedCard, ThemedText, ThemedView } from '@/components/Themed';
-import { ms, vs } from '@/constants/Layout';
-import { auth, db } from '@/lib/supabase';
-import { useRouter } from 'expo-router';
+import { AppCard, BloodGroupBadge, EmptyState, StatusBadge } from '@/components/ui';
+import { useAppTheme } from '@/components/Themed';
+import { spacing, typography, radii } from '@/constants/theme';
+import { auth, db } from '../../lib/supabase';
 import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc, where } from '../../lib/supabase';
 import React from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface AcceptedRequest {
   id: string;
@@ -15,16 +15,14 @@ interface AcceptedRequest {
   urgency: string;
   status: string;
   acceptedBy: string;
-  patientId?: string; // made optional to avoid crash if not present
+  patientId?: string;
   number?: string;
   createdAt?: any;
 }
 
 export default function DonorHome() {
-  const insets = useSafeAreaInsets();
+  const { colors } = useAppTheme();
   const [acceptedRequest, setAcceptedRequest] = React.useState<AcceptedRequest | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const router = useRouter();
 
   React.useEffect(() => {
     const currentUser = auth.currentUser;
@@ -42,8 +40,6 @@ export default function DonorHome() {
       if (!snapshot.empty) {
         const docSnap = snapshot.docs[0];
         const rawData = docSnap.data();
-
-        // Casting carefully to prevent runtime errors
         const data: AcceptedRequest = {
           id: docSnap.id,
           name: rawData.name || 'Unknown',
@@ -60,8 +56,6 @@ export default function DonorHome() {
             const patientDoc = await getDoc(doc(db, 'users', data.patientId));
             if (patientDoc.exists()) {
               data.number = patientDoc.data()?.number || '';
-            } else {
-              console.warn('Patient not found in users collection.');
             }
           } catch (err) {
             console.error('Error fetching patient doc:', err);
@@ -92,68 +86,102 @@ export default function DonorHome() {
   };
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top + vs(10) }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: vs(30) }}>
-        {/* Awareness Board */}
-        <ThemedCard style={[styles.card, { marginTop: vs(10) }]}>
-          <ThemedText type="title" style={styles.title}>🧠 Awareness Board</ThemedText>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={[styles.eyebrow, { color: colors.primary }]}>DONOR DASHBOARD</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Ready to make an impact</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            Track your accepted request and stay informed about safe donation.
+          </Text>
+        </View>
 
-          <ThemedText type="subtitle" style={styles.subtitle}>❤️ Why Donate?</ThemedText>
-          <ThemedText style={styles.text}>• Every donation saves up to 3 lives</ThemedText>
-          <ThemedText style={styles.text}>• Helps accident victims, cancer & thalassemia patients, and pregnant women</ThemedText>
+        <AppCard style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Active accepted request</Text>
+            {acceptedRequest ? <StatusBadge status="accepted" /> : null}
+          </View>
 
-          <ThemedText type="subtitle" style={styles.subtitle}>✅ You Can Donate If:</ThemedText>
-          <ThemedText style={styles.text}>• Age: 18–65 years</ThemedText>
-          <ThemedText style={styles.text}>• Weight: 50 kg+</ThemedText>
-          <ThemedText style={styles.text}>• Healthy & not on strong medications</ThemedText>
+          {acceptedRequest ? (
+            <View>
+              <View style={styles.requestTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.patientName, { color: colors.text }]}>{acceptedRequest.name}</Text>
+                  <Text style={[styles.meta, { color: colors.textMuted }]}>Urgency: {acceptedRequest.urgency}</Text>
+                </View>
+                <BloodGroupBadge group={acceptedRequest.bloodGroup} />
+              </View>
 
-          <ThemedText type="subtitle" style={styles.subtitle}>🧠 Busting Myths:</ThemedText>
-          <ThemedText style={styles.text}>• Myth: I’ll feel weak{"\n"}Truth: Your body recovers quickly</ThemedText>
-          <ThemedText style={styles.text}>• Myth: I need to know the patient{"\n"}Truth: Your blood helps anyone in urgent need</ThemedText>
-        </ThemedCard>
+              <View style={[styles.infoBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                <Text style={[styles.infoLabel, { color: colors.textMuted }]}>Status</Text>
+                <Text style={[styles.infoValue, { color: colors.text }]}>You have accepted this request. Reach out to coordinate donation.</Text>
+              </View>
 
-        {/* Accepted Request */}
-        {acceptedRequest && (
-          <ThemedCard style={styles.requestCard}>
-            <ThemedText style={styles.requestTitle}>Request Accepted</ThemedText>
-            <ThemedText style={styles.info}>Patient: {acceptedRequest.name}</ThemedText>
-            <ThemedText style={styles.info}>Blood Group: {acceptedRequest.bloodGroup}</ThemedText>
-            <ThemedText style={styles.info}>Urgency: {acceptedRequest.urgency}</ThemedText>
-
-            <View style={styles.actions}>
-              <MessageButton type="whatsapp" phone={acceptedRequest?.number || ''} message="Hello, I’m your donor from Rakth Rekha." />
-              <MessageButton type="sms" phone={acceptedRequest?.number || ''} message="Hello, contacting you as your donor." />
-              <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
-                <ThemedText style={styles.cancelText}>✖ Cancel</ThemedText>
-              </TouchableOpacity>
+              <View style={styles.actions}>
+                <MessageButton type="whatsapp" phone={acceptedRequest?.number || ''} message="Hello, I’m your donor from Rakth Rekha." />
+                <MessageButton type="sms" phone={acceptedRequest?.number || ''} message="Hello, contacting you as your donor." />
+              </View>
+              <Pressable style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={handleCancel}>
+                <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel acceptance</Text>
+              </Pressable>
             </View>
-          </ThemedCard>
-        )}
+          ) : (
+            <EmptyState
+              icon="heart-outline"
+              title="No active accepted request"
+              message="When you accept a nearby request, it will appear here with contact actions."
+            />
+          )}
+        </AppCard>
+
+        <AppCard style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Donation awareness</Text>
+          <View style={styles.tipList}>
+            <Tip title="Why donate?" text="Every donation can help save up to three lives." colors={colors} />
+            <Tip title="Who you help" text="Supports accident victims, cancer and thalassemia patients, and mothers in need." colors={colors} />
+            <Tip title="Before you donate" text="Age 18–65, 50kg+, healthy and not on strong medications." colors={colors} />
+            <Tip title="Common myth" text="Feeling weak after donation is usually temporary — your body recovers quickly." colors={colors} />
+          </View>
+        </AppCard>
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
+  );
+}
+
+function Tip({ title, text, colors }: { title: string; text: string; colors: any }) {
+  return (
+    <View style={[styles.tip, { borderColor: colors.border }]}>
+      <View style={[styles.tipDot, { backgroundColor: colors.primary }]} />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.tipTitle, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.tipText, { color: colors.textMuted }]}>{text}</Text>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: ms(14) },
-  card: { marginBottom: vs(16), borderRadius: ms(12), padding: ms(14) },
-  title: { fontSize: ms(18), fontWeight: '700', marginBottom: vs(8) },
-  subtitle: { fontSize: ms(15), fontWeight: '600', marginTop: vs(10), marginBottom: vs(4) },
-  text: { fontSize: ms(13), marginBottom: vs(4) },
-
-  requestCard: { borderRadius: ms(12), padding: ms(14), marginBottom: vs(16) },
-  requestTitle: { fontSize: ms(16), fontWeight: '700', marginBottom: vs(6) },
-  info: { fontSize: ms(13), marginBottom: vs(4) },
-
-  actions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: vs(10) },
-  cancelBtn: {
-    borderWidth: 1,
-    borderColor: '#e53935',
-    paddingVertical: vs(8),
-    borderRadius: ms(8),
-    flex: 1,
-    alignItems: 'center',
-    marginLeft: ms(6),
-  },
-  cancelText: { color: '#e53935', fontWeight: '600' },
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  header: { marginBottom: spacing.xl },
+  eyebrow: { ...typography.caption, fontWeight: '700', letterSpacing: 1.1, marginBottom: spacing.xs },
+  title: { ...typography.title, fontSize: 30, lineHeight: 36, marginBottom: spacing.sm },
+  subtitle: { ...typography.body },
+  sectionCard: { marginBottom: spacing.lg },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg, gap: spacing.md },
+  sectionTitle: { ...typography.h3 },
+  requestTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
+  patientName: { ...typography.h3, fontSize: 20, marginBottom: 2 },
+  meta: { ...typography.bodySm },
+  infoBox: { borderWidth: 1, borderRadius: radii.md, padding: spacing.md, marginBottom: spacing.lg },
+  infoLabel: { ...typography.caption, marginBottom: 2 },
+  infoValue: { ...typography.bodySm },
+  actions: { flexDirection: 'row', gap: spacing.sm },
+  cancelBtn: { marginTop: spacing.md, minHeight: 44, borderWidth: 1, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
+  cancelText: { ...typography.button, fontSize: 14 },
+  tipList: { marginTop: spacing.md, gap: spacing.md },
+  tip: { flexDirection: 'row', gap: spacing.md, paddingTop: spacing.md, borderTopWidth: 1 },
+  tipDot: { width: 8, height: 8, borderRadius: 4, marginTop: 7 },
+  tipTitle: { ...typography.bodySm, fontWeight: '700', marginBottom: 2 },
+  tipText: { ...typography.bodySm },
 });

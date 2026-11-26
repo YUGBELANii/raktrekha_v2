@@ -1,188 +1,64 @@
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme,
-} from 'react-native';
-import { ThemedText, ThemedView } from '../../components/Themed';
+import { Platform, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppButton, AppCard, AppHeader, AppInput } from '@/components/ui';
+import { spacing, typography, radii } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 
 const AdvanceRequestScreen = () => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-
-  const [form, setForm] = useState({
-    bloodType: '',
-    units: '',
-    reason: '',
-  });
-
+  const { colors } = useAppTheme();
+  const [form, setForm] = useState({ bloodType: '', units: '', reason: '' });
   const [date, setDate] = useState(new Date());
   const [showPicker, setShowPicker] = useState(false);
 
-  const handleChange = (key: string, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
+  const handleChange = (key: string, value: string) => setForm((prev) => ({ ...prev, [key]: value }));
 
-  const onDateChange = (event: any, selectedDate?: Date | undefined) => {
+  const onDateChange = (_event: any, selectedDate?: Date | undefined) => {
     if (selectedDate) setDate(selectedDate);
     setShowPicker(Platform.OS === 'ios');
   };
 
   const handleSubmit = () => {
-    if (!form.bloodType || !form.units || !form.reason) {
-      alert('Please fill in all fields');
-      return;
-    }
-
+    if (!form.bloodType || !form.units || !form.reason) { alert('Please fill in all fields'); return; }
     const formattedDate = date.toISOString().split('T')[0];
-
-    console.log('Request:', {
-      ...form,
-      requiredDate: formattedDate,
-    });
-
+    console.log('Request:', { ...form, requiredDate: formattedDate });
     alert(`Request submitted for ${formattedDate}`);
   };
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <ThemedText type="title" style={styles.title}>
-          Advance Blood Request
-        </ThemedText>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <AppHeader title="Advance Request" subtitle="Plan a future blood need" onBack={() => router.back()} />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <AppCard>
+          <AppInput label="Blood Type" placeholder="e.g. A+" value={form.bloodType} onChangeText={(t) => handleChange('bloodType', t)} autoCapitalize="characters" />
+          <AppInput label="Units Required" placeholder="e.g. 2" keyboardType="numeric" value={form.units} onChangeText={(t) => handleChange('units', t)} />
+          <AppInput label="Reason" placeholder="Why do you need it?" multiline style={{ minHeight: 90, textAlignVertical: 'top' }} value={form.reason} onChangeText={(t) => handleChange('reason', t)} />
 
-        <ThemedText style={styles.label}>Blood Type</ThemedText>
-        <TextInput
-          placeholder="e.g. A+"
-          placeholderTextColor={isDark ? '#888' : '#aaa'}
-          style={[
-            styles.input,
-            {
-              backgroundColor: isDark ? '#222' : '#fff',
-              color: isDark ? '#fff' : '#000',
-            },
-          ]}
-          value={form.bloodType}
-          onChangeText={(text) => handleChange('bloodType', text)}
-        />
+          <Text style={[styles.label, { color: colors.text }]}>Required Date</Text>
+          <Pressable onPress={() => setShowPicker(true)} style={[styles.dateBox, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Text style={[styles.dateText, { color: colors.text }]}>{date.toDateString()}</Text>
+          </Pressable>
 
-        <ThemedText style={styles.label}>Units Required</ThemedText>
-        <TextInput
-          placeholder="e.g. 2"
-          placeholderTextColor={isDark ? '#888' : '#aaa'}
-          style={[
-            styles.input,
-            {
-              backgroundColor: isDark ? '#222' : '#fff',
-              color: isDark ? '#fff' : '#000',
-            },
-          ]}
-          keyboardType="numeric"
-          value={form.units}
-          onChangeText={(text) => handleChange('units', text)}
-        />
+          {showPicker && (
+            <DateTimePicker value={date} mode="date" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={onDateChange} minimumDate={new Date()} maximumDate={new Date(2100, 11, 31)} />
+          )}
 
-        <ThemedText style={styles.label}>Reason</ThemedText>
-        <TextInput
-          placeholder="Why do you need it?"
-          placeholderTextColor={isDark ? '#888' : '#aaa'}
-          style={[
-            styles.input,
-            {
-              height: 100,
-              textAlignVertical: 'top',
-              backgroundColor: isDark ? '#222' : '#fff',
-              color: isDark ? '#fff' : '#000',
-            },
-          ]}
-          multiline
-          value={form.reason}
-          onChangeText={(text) => handleChange('reason', text)}
-        />
-
-        <ThemedText style={[styles.label, { marginTop: 20 }]}>
-          Required Date
-        </ThemedText>
-        <TouchableOpacity
-          onPress={() => setShowPicker(true)}
-          style={[
-            styles.dateBox,
-            {
-              backgroundColor: isDark ? '#222' : '#fff',
-            },
-          ]}
-        >
-          <ThemedText>{date.toDateString()}</ThemedText>
-        </TouchableOpacity>
-
-        {showPicker && (
-          <DateTimePicker
-            value={date}
-            mode="date"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={onDateChange}
-            minimumDate={new Date()}
-            maximumDate={new Date(2100, 11, 31)}
-          />
-        )}
-
-        <TouchableOpacity onPress={handleSubmit} style={styles.submitBtn}>
-          <ThemedText style={styles.submitText}>Submit Request</ThemedText>
-        </TouchableOpacity>
+          <AppButton label="Submit Request" onPress={handleSubmit} />
+        </AppCard>
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scroll: {
-    padding: 20,
-    flexGrow: 1,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 15,
-  },
-  dateBox: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 10,
-    marginBottom: 20,
-  },
-  submitBtn: {
-    backgroundColor: '#e53935',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  submitText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  label: { ...typography.caption, fontSize: 13, marginBottom: spacing.sm },
+  dateBox: { minHeight: 52, borderWidth: 1, borderRadius: radii.md, paddingHorizontal: spacing.md, justifyContent: 'center', marginBottom: spacing.lg },
+  dateText: { ...typography.body },
 });
 
 export default AdvanceRequestScreen;

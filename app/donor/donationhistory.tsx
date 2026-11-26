@@ -2,64 +2,44 @@ import { useRouter } from 'expo-router';
 import { getAuth } from '../../lib/supabase';
 import { Timestamp, collection, getDocs, query, where } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
-import { ThemedText, ThemedView, useThemeColor } from '../../components/Themed';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppCard, AppHeader, EmptyState, LoadingState, StatusBadge } from '@/components/ui';
+import { spacing, typography } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 import { db } from '../../lib/supabase';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const { width } = Dimensions.get('window');
-
-type Donation = {
-  id: string;
-  location?: string;
-  type?: string;
-  receiver?: string;
-  status?: string;
-  date?: Timestamp | string;
-};
+type Donation = { id: string; location?: string; type?: string; receiver?: string; status?: string; date?: Timestamp | string };
 
 export default function DonationHistoryScreen() {
-  const user = getAuth().currentUser;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
+  const { colors } = useAppTheme();
+  const user = getAuth().currentUser;
   const [donations, setDonations] = useState<Donation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [donationCount, setDonationCount] = useState(0);
 
   const fetchHistory = async () => {
     try {
       if (!user) return;
-
-      // ✅ Fetch completed requests where donor is the logged-in user
-      const q = query(
-        collection(db, 'requests'),
-        where('acceptedBy', '==', user.uid),
-        where('status', '==', 'completed')
-      );
-
+      const q = query(collection(db, 'requests'), where('acceptedBy', '==', user.uid), where('status', '==', 'completed'));
       const snapshot = await getDocs(q);
-
-      const data: Donation[] = snapshot.docs.map(doc => {
-        const d = doc.data();
+      const data: Donation[] = snapshot.docs.map((d: any) => {
+        const raw = d.data();
         return {
-          id: doc.id,
-          location: d.hospital || d.location || 'Unknown Hospital',
-          type: d.bloodType || d.type || 'Blood Donation',
-          receiver: d.name || 'Patient',
-          status: d.status || 'Completed',
-          date: d.completedAt || d.createdAt || '',
+          id: d.id,
+          location: raw.hospital || raw.location || 'Unknown Hospital',
+          type: raw.bloodType || raw.type || 'Blood Donation',
+          receiver: raw.name || 'Patient',
+          status: raw.status || 'Completed',
+          date: raw.completedAt || raw.createdAt || '',
         };
       });
-
-      // ✅ Sort by date
       const sorted = data.sort((a, b) => {
         const dateA = a.date instanceof Timestamp ? a.date.toDate() : new Date(a.date || '');
         const dateB = b.date instanceof Timestamp ? b.date.toDate() : new Date(b.date || '');
         return dateB.getTime() - dateA.getTime();
       });
-
       setDonations(sorted);
-      setDonationCount(sorted.length);
     } catch (err) {
       console.error('Failed to fetch donation history:', err);
     } finally {
@@ -67,75 +47,73 @@ export default function DonationHistoryScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchHistory();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  useEffect(() => { fetchHistory(); }, []);
 
   const formatDate = (timestamp: Timestamp | string | undefined): string => {
     if (!timestamp) return 'N/A';
     try {
-      const date =
-        timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
-      return date.toLocaleDateString() + ' at ' +
-             date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+      return date.toLocaleDateString() + ' at ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch {
       return 'Invalid Date';
     }
   };
 
-  const background = useThemeColor({}, 'background');
-  const cardBg = useThemeColor({}, 'card');
-  const text = useThemeColor({}, 'text');
-
   return (
-    <ThemedView style={[styles.container, { backgroundColor: background }]}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <ThemedText style={styles.header}>Your Donation History</ThemedText>
-
-        {!loading && (
-          <ThemedText style={styles.countText}>
-            🩸 You have donated blood <ThemedText style={{ fontWeight: '700' }}>{donationCount}</ThemedText> time(s)
-          </ThemedText>
-        )}
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <AppHeader title="Donation History" subtitle="Your completed donations" onBack={() => router.back()} />
+      <ScrollView contentContainerStyle={styles.content}>
+        <AppCard style={styles.summary}>
+          <Text style={[styles.summaryLabel, { color: colors.textMuted }]}>Total completed donations</Text>
+          <Text style={[styles.summaryValue, { color: colors.primary }]}>{donations.length}</Text>
+        </AppCard>
 
         {loading ? (
-          <ThemedText style={styles.infoText}>Loading...</ThemedText>
+          <LoadingState message="Loading donation history..." />
         ) : donations.length === 0 ? (
-          <ThemedText style={styles.infoText}>No donations recorded yet.</ThemedText>
+          <AppCard><EmptyState icon="time-outline" title="No donations yet" message="Your completed donations will appear here." /></AppCard>
         ) : (
-          donations.map((donation, index) => (
-            <View key={donation.id || index} style={[styles.card, { backgroundColor: cardBg, borderColor: text }]}>
-              <ThemedText style={styles.label}>🏥 Location:</ThemedText>
-              <ThemedText style={styles.value}>{donation.location}</ThemedText>
-
-              <ThemedText style={styles.label}>📅 Date & Time:</ThemedText>
-              <ThemedText style={styles.value}>{formatDate(donation.date)}</ThemedText>
-
-              <ThemedText style={styles.label}>💉 Type:</ThemedText>
-              <ThemedText style={styles.value}>{donation.type}</ThemedText>
-
-              <ThemedText style={styles.label}>👤 Receiver:</ThemedText>
-              <ThemedText style={styles.value}>{donation.receiver}</ThemedText>
-
-              <ThemedText style={[styles.label, { marginTop: 10 }]}>✅ Status:</ThemedText>
-              <ThemedText style={[styles.value, { color: 'green' }]}>
-                Completed
-              </ThemedText>
-            </View>
+          donations.map((donation) => (
+            <AppCard key={donation.id} style={styles.card}>
+              <View style={styles.cardTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.cardTitle, { color: colors.text }]}>{donation.receiver}</Text>
+                  <Text style={[styles.cardMeta, { color: colors.textMuted }]}>{donation.location}</Text>
+                </View>
+                <StatusBadge status="completed" />
+              </View>
+              <View style={[styles.detailRow, { borderTopColor: colors.border }]}>
+                <Detail label="Date" value={formatDate(donation.date)} colors={colors} />
+                <Detail label="Type" value={donation.type || 'Blood Donation'} colors={colors} />
+              </View>
+            </AppCard>
           ))
         )}
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
+  );
+}
+
+function Detail({ label, value, colors }: any) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={[styles.detailLabel, { color: colors.textMuted }]}>{label}</Text>
+      <Text style={[styles.detailValue, { color: colors.text }]}>{value}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  header: { fontSize: 18, fontWeight: '700', marginTop: 16, marginBottom: 4, textAlign: 'center' },
-  countText: { textAlign: 'center', fontSize: 15, marginBottom: 10, color: '#e53935' },
-  infoText: { textAlign: 'center', marginTop: 30, opacity: 0.6 },
-  card: { padding: 14, margin: 16, borderRadius: 12, borderWidth: 1 },
-  label: { fontSize: 13, fontWeight: '600', marginTop: 6 },
-  value: { fontSize: 14, marginTop: 2 },
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  summary: { marginBottom: spacing.lg, alignItems: 'center' },
+  summaryLabel: { ...typography.bodySm, marginBottom: spacing.xs },
+  summaryValue: { fontSize: 36, fontWeight: '700' },
+  card: { marginBottom: spacing.lg },
+  cardTop: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },
+  cardTitle: { ...typography.h3, fontSize: 18 },
+  cardMeta: { ...typography.bodySm, marginTop: 2 },
+  detailRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg, paddingTop: spacing.lg, borderTopWidth: 1 },
+  detailLabel: { ...typography.caption, marginBottom: 2 },
+  detailValue: { ...typography.bodySm, fontWeight: '600' },
 });

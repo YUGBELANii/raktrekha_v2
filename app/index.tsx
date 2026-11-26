@@ -1,108 +1,113 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-  useColorScheme,
-} from 'react-native';
+import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppButton } from '@/components/ui';
+import { spacing, typography } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const { colors } = useAppTheme();
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: isDark ? '#000' : '#fff' },
-      ]}
-    >
-      <Image
-        source={
-          isDark
-            ? require('../assets/images/logo-dark.png') // make sure this exists
-            : require('../assets/images/logo.png')
-        }
-        style={styles.logo}
-        resizeMode="contain"
-      />
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={styles.content} bounces={false}>
+        <View style={styles.hero}>
+          <View style={[styles.logoWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <Image source={require('../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
+          </View>
+          <Text style={[styles.eyebrow, { color: colors.primary }]}>RAKT REKHA</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Donate blood.{'\n'}Save lives with confidence.</Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            A trusted platform connecting donors and recipients when every minute matters.
+          </Text>
+        </View>
 
-      <Text style={[styles.title, { color: '#e53935' }]}>
-        Welcome to Rakth Rekha
-      </Text>
-      <Text
-        style={[
-          styles.subtitle,
-          { color: isDark ? '#aaa' : '#555' },
-        ]}
-      >
-        Donating Blood Doesn&apos;t Require You To Be A Specific Type — Just Human.
-      </Text>
+        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View style={styles.statRow}>
+            <View style={[styles.stat, { backgroundColor: colors.primarySoft }]}>
+              <Text style={[styles.statValue, { color: colors.primary }]}>Fast</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Request matching</Text>
+            </View>
+            <View style={[styles.stat, { backgroundColor: colors.background, borderColor: colors.border, borderWidth: 1 }]}>
+              <Text style={[styles.statValue, { color: colors.text }]}>Safe</Text>
+              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Trusted connections</Text>
+            </View>
+          </View>
 
-      <TouchableOpacity
-        style={styles.loginButton}
-        onPress={() => router.push('/signin')}
-      >
-        <Text style={styles.buttonText}>Log In</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.signupButton}
-        onPress={() => router.push('/signup')}
-      >
-        <Text style={styles.buttonText}>Sign Up</Text>
-      </TouchableOpacity>
-    </View>
+          <AppButton label="Log In" onPress={() => router.push('/signin')} />
+          <AppButton label="Create Account" onPress={() => router.push('/signup')} variant="outline" style={styles.secondary} />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 24,
+  safe: { flex: 1 },
+  content: {
+    flexGrow: 1,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.xxl,
     justifyContent: 'center',
+  },
+  hero: {
     alignItems: 'center',
+    marginBottom: spacing.xxxl,
+  },
+  logoWrap: {
+    width: 120,
+    height: 120,
+    borderRadius: 32,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.xl,
   },
   logo: {
-    height: 160,
-    width: 160,
-    marginBottom: 30,
+    width: 84,
+    height: 84,
+  },
+  eyebrow: {
+    ...typography.caption,
+    fontWeight: '700',
+    letterSpacing: 1.2,
+    marginBottom: spacing.sm,
   },
   title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    marginBottom: 12,
+    ...typography.title,
     textAlign: 'center',
+    marginBottom: spacing.md,
   },
   subtitle: {
-    fontSize: 16,
+    ...typography.body,
     textAlign: 'center',
-    marginBottom: 40,
+    maxWidth: 340,
   },
-  loginButton: {
-    backgroundColor: '#e53935',
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 10,
-    marginBottom: 16,
-    width: '100%',
-    alignItems: 'center',
+  card: {
+    borderWidth: 1,
+    borderRadius: 24,
+    padding: spacing.xl,
   },
-  signupButton: {
-    backgroundColor: '#43a047',
-    paddingVertical: 14,
-    paddingHorizontal: 40,
-    borderRadius: 10,
-    width: '100%',
-    alignItems: 'center',
+  statRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.xl,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+  stat: {
+    flex: 1,
+    borderRadius: 16,
+    padding: spacing.md,
+  },
+  statValue: {
+    ...typography.h3,
+    marginBottom: 2,
+  },
+  statLabel: {
+    ...typography.caption,
+  },
+  secondary: {
+    marginTop: spacing.md,
   },
 });

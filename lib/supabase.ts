@@ -44,8 +44,8 @@ const asUser = (user: any): CompatUser | null =>
 export const auth: { currentUser: CompatUser | null } = { currentUser: null };
 
 let currentUser: CompatUser | null = null;
-supabase.auth.getSession().then(({ data }) => { currentUser = asUser(data.session?.user); });
-supabase.auth.onAuthStateChange((_event, session) => { currentUser = asUser(session?.user); });
+supabase.auth.getSession().then(({ data }: { data: { session: { user: any } | null } }) => { currentUser = asUser(data.session?.user); });
+supabase.auth.onAuthStateChange((_event: any, session: any) => { currentUser = asUser(session?.user); });
 Object.defineProperty(auth, 'currentUser', { get: () => currentUser });
 
 export const getAuth = () => auth;
@@ -77,8 +77,8 @@ export async function signOut(_auth?: unknown) {
 }
 
 export function onAuthStateChanged(_auth: unknown, callback: (user: CompatUser | null) => void) {
-  supabase.auth.getSession().then(({ data }) => callback(asUser(data.session?.user)));
-  const { data } = supabase.auth.onAuthStateChange((_event, session) => callback(asUser(session?.user)));
+  supabase.auth.getSession().then(({ data }: { data: { session: { user: any } | null } }) => callback(asUser(data.session?.user)));
+  const { data } = supabase.auth.onAuthStateChange((_event: any, session: any) => callback(asUser(session?.user)));
   return () => data.subscription.unsubscribe();
 }
 
@@ -121,7 +121,11 @@ function mapProfile(data: any) {
   const mapped: any = {};
   Object.entries(rest).forEach(([key, value]) => { mapped[fieldName(key)] = value; });
   if (mapped.age !== undefined && mapped.age !== null) mapped.age = Number(mapped.age);
-  return { profile: mapped, contacts: { phone: number ?? phone, emergency_contact: emergencyContact } };
+  return {
+    profile: mapped,
+    contacts: { phone: number ?? phone },
+    emergency: emergencyContact,
+  };
 }
 function fromDb(row: any) {
   const out: any = {};
@@ -159,8 +163,14 @@ async function selectOne(ref: Ref) {
   const { data, error } = await supabase.from(ref.table).select('*').eq(ref.table === 'profiles' ? 'id' : 'id', ref.id).maybeSingle();
   if (error) throw error;
   if (ref.table === 'profiles' && data) {
-    const { data: contact } = await supabase.from('profile_contacts').select('phone, emergency_contact').eq('user_id', ref.id).maybeSingle();
-    return { ...fromDb(data), number: contact?.phone || '', phone: contact?.phone || '', emergencyContact: contact?.emergency_contact || '' };
+    const { data: contact } = await supabase.from('profile_contacts').select('phone').eq('user_id', ref.id).maybeSingle();
+    let emergencyContact = '';
+    const viewerId = currentUser?.uid || (await supabase.auth.getSession()).data.session?.user?.id;
+    if (viewerId && ref.id === viewerId) {
+      const { data: emergency } = await supabase.from('profile_emergency_contacts').select('emergency_contact').eq('user_id', ref.id).maybeSingle();
+      emergencyContact = emergency?.emergency_contact || '';
+    }
+    return { ...fromDb(data), number: contact?.phone || '', phone: contact?.phone || '', emergencyContact };
   }
   return ref.table === 'blood_requests' ? fromDb(data) : data ? fromDb(data) : null;
 }
@@ -170,16 +180,33 @@ export async function getDoc(ref: Ref) {
 }
 export async function setDoc(ref: Ref, value: any, options?: { merge?: boolean }) {
   if (ref.nested?.[0] === 'privacy') {
-    const { error } = await supabase.from('user_settings').upsert({ user_id: ref.id, key: ref.nested[1], settings: value }, { onConflict: 'user_id,key' });
+    let settings = value;
+    if (options?.merge) {
+      const { data: existing, error: readError } = await supabase
+        .from('user_settings')
+        .select('settings')
+        .eq('user_id', ref.id)
+        .eq('key', ref.nested[1])
+        .maybeSingle();
+      if (readError) throw readError;
+      settings = { ...(existing?.settings || {}), ...(value || {}) };
+    }
+    const { error } = await supabase.from('user_settings').upsert({ user_id: ref.id, key: ref.nested[1], settings }, { onConflict: 'user_id,key' });
     if (error) throw error;
     return;
   }
   if (ref.table === 'profiles') {
-    const { profile, contacts } = mapProfile(value);
-    const { error } = await supabase.from('profiles').upsert({ id: ref.id, ...profile }, { onConflict: 'id' });
-    if (error) throw error;
-    if (contacts.phone !== undefined || contacts.emergency_contact !== undefined) {
-      const { error } = await supabase.from('profile_contacts').upsert({ user_id: ref.id, ...contacts }, { onConflict: 'user_id' });
+    const { profile, contacts, emergency } = mapProfile(value);
+    if (Object.keys(profile).length > 0) {
+      const { error } = await supabase.from('profiles').upsert({ id: ref.id, ...profile }, { onConflict: 'id' });
+      if (error) throw error;
+    }
+    if (contacts.phone !== undefined) {
+      const { error } = await supabase.from('profile_contacts').upsert({ user_id: ref.id, phone: contacts.phone }, { onConflict: 'user_id' });
+      if (error) throw error;
+    }
+    if (emergency !== undefined) {
+      const { error } = await supabase.from('profile_emergency_contacts').upsert({ user_id: ref.id, emergency_contact: emergency }, { onConflict: 'user_id' });
       if (error) throw error;
     }
     return;
@@ -199,14 +226,23 @@ export async function addDoc(ref: Ref, value: any) {
 }
 export async function updateDoc(ref: Ref, value: any) {
   const mapped: any = {};
-  Object.entries(value).forEach(([key, val]) => { mapped[fieldName(key)] = key === 'acceptedBy' && val === '' ? null : val; });
+  Object.entries(value).forEach(([key, val]) => {
+    const v = val instanceof Timestamp ? val.toDate().toISOString() : val instanceof Date ? val.toISOString() : val;
+    mapped[fieldName(key)] = key === 'acceptedBy' && v === '' ? null : v;
+  });
   if (ref.table === 'profiles') {
-    const { profile, contacts } = mapProfile(value);
-    const { error } = await supabase.from('profiles').update(profile).eq('id', ref.id);
-    if (error) throw error;
-    if (contacts.phone !== undefined || contacts.emergency_contact !== undefined) {
-      const { error: contactError } = await supabase.from('profile_contacts').upsert({ user_id: ref.id, ...contacts }, { onConflict: 'user_id' });
+    const { profile, contacts, emergency } = mapProfile(value);
+    if (Object.keys(profile).length > 0) {
+      const { error } = await supabase.from('profiles').update(profile).eq('id', ref.id);
+      if (error) throw error;
+    }
+    if (contacts.phone !== undefined) {
+      const { error: contactError } = await supabase.from('profile_contacts').upsert({ user_id: ref.id, phone: contacts.phone }, { onConflict: 'user_id' });
       if (contactError) throw contactError;
+    }
+    if (emergency !== undefined) {
+      const { error: emergencyError } = await supabase.from('profile_emergency_contacts').upsert({ user_id: ref.id, emergency_contact: emergency }, { onConflict: 'user_id' });
+      if (emergencyError) throw emergencyError;
     }
     return;
   }
@@ -214,6 +250,11 @@ export async function updateDoc(ref: Ref, value: any) {
   if (error) throw error;
 }
 async function runQuery(spec: QuerySpec) {
+  if (spec.ref.nested?.[0] === 'privacy') {
+    const data = await selectOne(spec.ref);
+    const docs = data ? [{ id: spec.ref.id, data: () => data }] : [];
+    return { docs, empty: docs.length === 0, size: docs.length };
+  }
   let request = supabase.from(spec.ref.table).select('*');
   if (spec.ref.id) request = request.eq('id', spec.ref.id);
   for (const filter of spec.filters) {
@@ -226,15 +267,20 @@ async function runQuery(spec: QuerySpec) {
   const { data, error } = await request;
   if (error) throw error;
   const rows = data || [];
+  const viewerId = currentUser?.uid || (await supabase.auth.getSession()).data.session?.user?.id;
   const docs = await Promise.all(rows.map(async (row: any) => {
     let item = fromDb(row);
     if (spec.ref.table === 'profiles') {
-      const { data: contact } = await supabase.from('profile_contacts').select('phone, emergency_contact').eq('user_id', row.id).maybeSingle();
-      item = { ...item, number: contact?.phone || '', phone: contact?.phone || '', emergencyContact: contact?.emergency_contact || '' };
+      const { data: contact } = await supabase.from('profile_contacts').select('phone').eq('user_id', row.id).maybeSingle();
+      let emergencyContact = '';
+      if (viewerId && row.id === viewerId) {
+        const { data: emergency } = await supabase.from('profile_emergency_contacts').select('emergency_contact').eq('user_id', row.id).maybeSingle();
+        emergencyContact = emergency?.emergency_contact || '';
+      }
+      item = { ...item, number: contact?.phone || '', phone: contact?.phone || '', emergencyContact };
     }
     if (spec.ref.table === 'blood_requests') {
-      const viewerId = currentUser?.uid;
-      const isCounterparty = viewerId && (row.patient_id === viewerId || row.accepted_by === viewerId);
+      const isCounterparty = viewerId && row.status === 'accepted' && (row.patient_id === viewerId || row.accepted_by === viewerId);
       if (isCounterparty) {
         const { data: contact } = await supabase.from('profile_contacts').select('phone').eq('user_id', row.patient_id).maybeSingle();
         item = { ...item, number: contact?.phone || '' };
@@ -262,8 +308,23 @@ export function onSnapshot(input: Ref | QuerySpec, callback: (snapshot: any) => 
     }).catch((error) => onError?.(error));
   };
   refresh();
-  const channel = supabase.channel(`compat-${spec.ref.table}-${Math.random()}`)
-    .on('postgres_changes', { event: '*', schema: 'public', table: spec.ref.table }, refresh)
-    .subscribe();
+  const channelName = `compat-${spec.ref.table}-${Math.random().toString(36).slice(2)}`;
+  let channel = supabase.channel(channelName);
+  if (spec.ref.nested?.[0] === 'privacy') {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table: 'user_settings' }, refresh);
+  } else {
+    channel = channel.on('postgres_changes', { event: '*', schema: 'public', table: spec.ref.table }, refresh);
+    if (spec.ref.table === 'profiles') {
+      channel = channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profile_contacts' }, refresh)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profile_emergency_contacts' }, refresh);
+    }
+    if (spec.ref.table === 'blood_requests') {
+      // Counterparty phone is attached from profile_contacts for authorized viewers.
+      channel = channel
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'profile_contacts' }, refresh);
+    }
+  }
+  channel.subscribe();
   return () => { active = false; supabase.removeChannel(channel); };
 }

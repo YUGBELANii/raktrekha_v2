@@ -1,18 +1,13 @@
 import MessageButton from '@/components/MessageBtn';
-import { Stack, useRouter } from 'expo-router';
+import { AppCard, BloodGroupBadge, EmptyState, StatusBadge } from '@/components/ui';
+import { useAppTheme } from '@/components/Themed';
+import { spacing, typography, radii } from '@/constants/theme';
+import { auth, db } from '../../lib/supabase';
+import { useRouter } from 'expo-router';
 import { collection, doc, getDoc, limit, onSnapshot, orderBy, query, updateDoc, where } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
-import {
-  Alert,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { ms, s, vs } from 'react-native-size-matters';
-import { ThemedCard, ThemedText, ThemedView } from '../../components/Themed';
-import { auth, db } from '../../lib/supabase';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Request = {
   id?: string;
@@ -26,14 +21,14 @@ type Request = {
   createdAt?: any;
 };
 
-export default function ReceiverHome() {   // ✅ renamed to avoid tab root behavior
+export default function ReceiverHome() {
   const router = useRouter();
+  const { colors } = useAppTheme();
   const [activeRequest, setActiveRequest] = useState<Request | null>(null);
 
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) return;
-
     const q = query(
       collection(db, 'requests'),
       where('patientId', '==', user.uid),
@@ -41,12 +36,10 @@ export default function ReceiverHome() {   // ✅ renamed to avoid tab root beha
       orderBy('createdAt', 'desc'),
       limit(1)
     );
-
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       if (!snapshot.empty) {
         const docSnap = snapshot.docs[0];
         const requestData = { id: docSnap.id, ...(docSnap.data() as Request) };
-
         const donorUid = requestData.donorId || requestData.acceptedBy;
         if (donorUid) {
           try {
@@ -65,7 +58,6 @@ export default function ReceiverHome() {   // ✅ renamed to avoid tab root beha
         setActiveRequest(null);
       }
     });
-
     return () => unsubscribe();
   }, []);
 
@@ -80,92 +72,92 @@ export default function ReceiverHome() {   // ✅ renamed to avoid tab root beha
   };
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: false }} />
-      <SafeAreaView style={{ flex: 1 }}>
-        {/* ✅ Outer container with paddingTop ensures content starts lower */}
-        <ThemedView style={styles.container}>
-          <ScrollView 
-            contentContainerStyle={styles.scrollContent} 
-            showsVerticalScrollIndicator={false}
-          >
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={[styles.eyebrow, { color: colors.primary }]}>RECEIVER DASHBOARD</Text>
+        <Text style={[styles.title, { color: colors.text }]}>Get help when you need it</Text>
+        <Text style={[styles.subtitle, { color: colors.textMuted }]}>Track your active blood request and important care information.</Text>
 
-            {/* Awareness Board */}
-            <ThemedCard style={styles.card}>
-              <ThemedText type="title" style={styles.title}>🧠 Awareness Board</ThemedText>
+        <AppCard style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Active request</Text>
+            {activeRequest ? <StatusBadge status={activeRequest.status} /> : null}
+          </View>
 
-              <ThemedText type="subtitle" style={styles.subHeading}>🔴 After Blood Transfusion:</ThemedText>
-              <ThemedText style={styles.text}>• Rest for 24–48 hours.</ThemedText>
-              <ThemedText style={styles.text}>• Drink plenty of fluids.</ThemedText>
-              <ThemedText style={styles.text}>• Watch for fever, chills, or rash.</ThemedText>
-              <ThemedText style={styles.text}>• Report any unusual symptoms to your doctor.</ThemedText>
+          {activeRequest ? (
+            <View>
+              <View style={styles.requestTop}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.requestName, { color: colors.text }]}>
+                    {activeRequest.status === 'accepted' ? `Donor: ${activeRequest.donorName || 'Assigned'}` : 'Blood request in progress'}
+                  </Text>
+                  <Text style={[styles.meta, { color: colors.textMuted }]}>
+                    {activeRequest.location ? `📍 ${activeRequest.location}` : 'We will notify you when a donor responds.'}
+                  </Text>
+                </View>
+                <BloodGroupBadge group={activeRequest.bloodGroup} />
+              </View>
 
-              <ThemedText type="subtitle" style={styles.subHeading}>🧬 Signs of Anemia:</ThemedText>
-              <ThemedText style={styles.text}>• Constant fatigue or weakness</ThemedText>
-              <ThemedText style={styles.text}>• Pale skin or lips</ThemedText>
-              <ThemedText style={styles.text}>• Shortness of breath</ThemedText>
-              <ThemedText style={styles.text}>• Dizziness or rapid heartbeat</ThemedText>
-            </ThemedCard>
-
-            {/* Request Status */}
-            <ThemedCard style={styles.requestCard}>
-              {activeRequest ? (
-                activeRequest.status === 'accepted' ? (
-                  <>
-                    <ThemedText style={styles.requestTitle}>✅ Request Accepted</ThemedText>
-                    <ThemedText style={styles.requestStatus}>Donor: {activeRequest.donorName}</ThemedText>
-                    <ThemedText style={styles.requestStatus}>Blood Group: {activeRequest.bloodGroup}</ThemedText>
-
-                    <View style={styles.requestActions}>
-                      <MessageButton type="whatsapp" phone={activeRequest.number || ''} message="Hello, contacting via Rakth Rekha." />
-                      <MessageButton type="sms" phone={activeRequest.number || ''} message="Hello, contacting via Rakth Rekha." />
-                      <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
-                        <ThemedText style={styles.btnText}>Cancel</ThemedText>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                ) : (
-                  <>
-                    <ThemedText style={styles.requestTitle}>🩸 Active Request</ThemedText>
-                    <ThemedText style={styles.requestStatus}>Blood Group: {activeRequest.bloodGroup}</ThemedText>
-                    <ThemedText style={styles.requestStatus}>📍 {activeRequest.location}</ThemedText>
-                    <View style={styles.requestActions}>
-                      <TouchableOpacity style={styles.viewBtn} onPress={() => router.push('/receiver/request')}>
-                        <ThemedText style={styles.btnText}>View</ThemedText>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={styles.cancelBtn} onPress={handleCancel}>
-                        <ThemedText style={styles.btnText}>Cancel</ThemedText>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )
+              {activeRequest.status === 'accepted' ? (
+                <View style={styles.actions}>
+                  <MessageButton type="whatsapp" phone={activeRequest.number || ''} message="Hello, contacting via Rakth Rekha." />
+                  <MessageButton type="sms" phone={activeRequest.number || ''} message="Hello, contacting via Rakth Rekha." />
+                </View>
               ) : (
-                <ThemedText style={{ fontStyle: 'italic', color: '#777' }}>No active request found.</ThemedText>
+                <Pressable style={[styles.viewBtn, { backgroundColor: colors.primarySoft }]} onPress={() => router.push('/receiver/request')}>
+                  <Text style={[styles.viewBtnText, { color: colors.primary }]}>View request details</Text>
+                </Pressable>
               )}
-            </ThemedCard>
 
-          </ScrollView>
-        </ThemedView>
-      </SafeAreaView>
-    </>
+              <Pressable style={[styles.cancelBtn, { borderColor: colors.border }]} onPress={handleCancel}>
+                <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel request</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <EmptyState icon="medkit-outline" title="No active request" message="Create a blood request when you need help. Your active request status will appear here." actionLabel="Create Request" onAction={() => router.push('/receiver/request')} />
+          )}
+        </AppCard>
+
+        <AppCard style={styles.card}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Care awareness</Text>
+          <View style={{ marginTop: spacing.md, gap: spacing.md }}>
+            <InfoRow title="After transfusion" text="Rest for 24–48 hours, hydrate well, and watch for fever, chills, or rash." colors={colors} />
+            <InfoRow title="Signs of anemia" text="Fatigue, pale skin, shortness of breath, dizziness, or rapid heartbeat." colors={colors} />
+            <InfoRow title="When to seek help" text="Contact your doctor immediately if you notice unusual symptoms after transfusion." colors={colors} />
+          </View>
+        </AppCard>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function InfoRow({ title, text, colors }: any) {
+  return (
+    <View style={[styles.infoRow, { borderTopColor: colors.border }]}>
+      <Text style={[styles.infoTitle, { color: colors.text }]}>{title}</Text>
+      <Text style={[styles.infoText, { color: colors.textMuted }]}>{text}</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: vs(20) },  // ✅ added paddingTop
-  scrollContent: { flexGrow: 1, padding: s(16), paddingBottom: vs(120) },
-
-  card: { borderRadius: ms(12), padding: ms(16), marginBottom: vs(20) },
-  title: { fontSize: ms(18), fontWeight: '700', marginBottom: vs(12) },
-  subHeading: { fontSize: ms(15), fontWeight: '600', marginTop: vs(10), marginBottom: vs(4) },
-  text: { fontSize: ms(13), marginBottom: vs(4) },
-
-  requestCard: { borderRadius: ms(12), padding: ms(16), marginBottom: vs(30) },
-  requestTitle: { fontSize: ms(16), fontWeight: '600', marginBottom: vs(6) },
-  requestStatus: { fontSize: ms(13), marginBottom: vs(6) },
-
-  requestActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: vs(12) },
-  viewBtn: { flex: 1, backgroundColor: '#43a047', paddingVertical: vs(10), borderRadius: ms(8), alignItems: 'center', marginRight: s(8) },
-  cancelBtn: { flex: 1, backgroundColor: '#d32f2f', paddingVertical: vs(10), borderRadius: ms(8), alignItems: 'center', marginLeft: s(4) },
-  btnText: { color: '#fff', fontWeight: '600', fontSize: ms(13) },
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  eyebrow: { ...typography.caption, fontWeight: '700', letterSpacing: 1.1, marginBottom: spacing.xs },
+  title: { ...typography.title, fontSize: 30, lineHeight: 36, marginBottom: spacing.sm },
+  subtitle: { ...typography.body, marginBottom: spacing.xl },
+  card: { marginBottom: spacing.lg },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.lg, gap: spacing.md },
+  sectionTitle: { ...typography.h3 },
+  requestTop: { flexDirection: 'row', gap: spacing.md, alignItems: 'center', marginBottom: spacing.lg },
+  requestName: { ...typography.h3, fontSize: 18, marginBottom: 2 },
+  meta: { ...typography.bodySm },
+  actions: { flexDirection: 'row', gap: spacing.sm },
+  viewBtn: { minHeight: 44, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
+  viewBtnText: { ...typography.button, fontSize: 14 },
+  cancelBtn: { marginTop: spacing.md, minHeight: 44, borderWidth: 1, borderRadius: radii.md, alignItems: 'center', justifyContent: 'center' },
+  cancelText: { ...typography.button, fontSize: 14 },
+  infoRow: { paddingTop: spacing.md, borderTopWidth: 1 },
+  infoTitle: { ...typography.bodySm, fontWeight: '700', marginBottom: 2 },
+  infoText: { ...typography.bodySm },
 });

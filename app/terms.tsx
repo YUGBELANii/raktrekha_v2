@@ -1,45 +1,43 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import { ThemedText, ThemedView } from '../components/Themed';
-import { ms, vs } from '../constants/Layout';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { AppHeader, AppCard } from '@/components/ui';
+import { spacing, typography } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 
 export default function TermsScreen() {
+  const { colors } = useAppTheme();
+  const router = useRouter();
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <AppHeader title="Terms & Conditions" subtitle="How to use Rakt Rekha responsibly" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.content}>
-        <ThemedText type="title" style={styles.header}>Terms & Conditions</ThemedText>
-
-        <ThemedText style={styles.paragraph}>
-          By using Rakt Rekha, you agree to comply with our terms and use the app responsibly to 
-          save lives.
-        </ThemedText>
-
-        <ThemedText style={styles.subheader}>Usage Policy</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          Users must provide accurate information and avoid misuse of the platform. Any malicious 
-          use may lead to account suspension.
-        </ThemedText>
-
-        <ThemedText style={styles.subheader}>Liability</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          Rakt Rekha serves as a bridge between donors and recipients. We do not guarantee outcomes 
-          of individual donations.
-        </ThemedText>
-
-        <ThemedText style={styles.subheader}>Changes to Terms</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          We may update these terms as required. Continued use of the app implies agreement with 
-          updated terms.
-        </ThemedText>
+        <AppCard>
+          <Text style={[styles.p, { color: colors.textMuted }]}>
+            By using Rakt Rekha, you agree to comply with our terms and use the app responsibly to save lives.
+          </Text>
+          <Text style={[styles.h, { color: colors.text }]}>Usage Policy</Text>
+          <Text style={[styles.p, { color: colors.textMuted }]}>
+            Users must provide accurate information and avoid misuse of the platform. Any malicious use may lead to account suspension.
+          </Text>
+          <Text style={[styles.h, { color: colors.text }]}>Liability</Text>
+          <Text style={[styles.p, { color: colors.textMuted }]}>
+            Rakt Rekha serves as a bridge between donors and recipients. We do not guarantee outcomes of individual donations.
+          </Text>
+          <Text style={[styles.h, { color: colors.text }]}>Changes to Terms</Text>
+          <Text style={[styles.p, { color: colors.textMuted, marginBottom: 0 }]}>
+            We may update these terms as required. Continued use of the app implies agreement with updated terms.
+          </Text>
+        </AppCard>
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: ms(14), paddingTop: vs(20) },
-  content: { paddingBottom: vs(40) },
-  header: { fontSize: ms(20), fontWeight: '700', marginBottom: vs(12), textAlign: 'center' },
-  subheader: { fontSize: ms(16), fontWeight: '600', marginTop: vs(10), marginBottom: vs(4) },
-  paragraph: { fontSize: ms(13), lineHeight: vs(18), marginBottom: vs(8) },
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  h: { ...typography.h3, fontSize: 17, marginTop: spacing.lg, marginBottom: spacing.sm },
+  p: { ...typography.bodySm, marginBottom: spacing.md },
 });

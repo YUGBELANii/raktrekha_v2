@@ -3,113 +3,59 @@ import { useRouter } from 'expo-router';
 import { getAuth } from '../../lib/supabase';
 import { doc, getDoc, setDoc } from '../../lib/supabase';
 import React, { useEffect, useState } from 'react';
-import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  TouchableOpacity,
-  useWindowDimensions
-} from 'react-native';
-import { ThemedText, ThemedView, useThemeColor } from '../../components/Themed';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppButton, AppCard, AppHeader } from '@/components/ui';
+import { spacing, typography, radii } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 import { db } from '../../lib/supabase';
 
-type DayAvailability = {
-  available: boolean;
-  start: string;
-  end: string;
-};
-
-type Availability = {
-  [day: string]: DayAvailability;
-};
-
+type DayAvailability = { available: boolean; start: string; end: string };
+type Availability = { [day: string]: DayAvailability };
 const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 export default function ScheduleAvailability() {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { width } = useWindowDimensions();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
+  const { colors } = useAppTheme();
   const user = getAuth().currentUser;
-
   const [availability, setAvailability] = useState<Availability>({});
   const [showTimePicker, setShowTimePicker] = useState({ show: false, day: '', type: 'start' });
+  const [saving, setSaving] = useState(false);
 
-  const backgroundColor = useThemeColor({}, 'background');
-  const cardColor = useThemeColor({}, 'card');
-  const textColor = useThemeColor({}, 'text');
+  useEffect(() => { fetchAvailability(); }, []);
 
-  useEffect(() => {
-    fetchAvailability();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const formatTime = (date: Date) =>
-    date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+  const formatTime = (date: Date) => date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 
   const fetchAvailability = async () => {
     if (!user) return;
     const docRef = doc(db, 'users', user.uid);
     const docSnap = await getDoc(docRef);
-
     let initial: Availability = {};
-    weekdays.forEach(day => {
-      initial[day] = {
-        available: false,
-        start: '09:00 AM',
-        end: '05:00 PM',
-      };
-    });
-
+    weekdays.forEach((day) => { initial[day] = { available: false, start: '09:00 AM', end: '05:00 PM' }; });
     if (docSnap.exists()) {
       const userData = docSnap.data();
-      if (userData.availability) {
-        setAvailability({ ...initial, ...userData.availability });
-        return;
-      }
+      if (userData.availability) { setAvailability({ ...initial, ...userData.availability }); return; }
     }
-
     setAvailability(initial);
   };
 
   const toggleDay = (day: string) => {
-    setAvailability(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        available: !prev[day]?.available,
-      },
-    }));
+    setAvailability((prev) => ({ ...prev, [day]: { ...prev[day], available: !prev[day]?.available } }));
   };
 
   const handleTimeChange = (_event: any, selectedDate: Date | undefined) => {
-    if (!selectedDate) {
-      setShowTimePicker({ show: false, day: '', type: 'start' });
-      return;
-    }
-
+    if (!selectedDate) { setShowTimePicker({ show: false, day: '', type: 'start' }); return; }
     const formatted = formatTime(selectedDate);
     const { day, type } = showTimePicker;
-
-    setAvailability(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        [type]: formatted,
-      },
-    }));
-
+    setAvailability((prev) => ({ ...prev, [day]: { ...prev[day], [type]: formatted } }));
     setShowTimePicker({ show: false, day: '', type: 'start' });
   };
 
   const handleSave = async () => {
     if (!user) return;
-
-    const invalidDay = weekdays.find(day => {
+    const invalidDay = weekdays.find((day) => {
       const { available, start, end } = availability[day];
       if (!available) return false;
-
       const to24 = (t: string) => {
         const [time, period] = t.split(' ');
         let [hours, minutes] = time.split(':').map(Number);
@@ -117,110 +63,66 @@ export default function ScheduleAvailability() {
         if (period === 'AM' && hours === 12) hours = 0;
         return hours * 60 + minutes;
       };
-
       return to24(start) >= to24(end);
     });
-
-    if (invalidDay) {
-      alert(`Invalid time range on ${invalidDay}. Start time must be before end time.`);
-      return;
+    if (invalidDay) { alert(`Invalid time range on ${invalidDay}. Start time must be before end time.`); return; }
+    try {
+      setSaving(true);
+      await setDoc(doc(db, 'users', user.uid), { availability }, { merge: true });
+      alert('Availability saved!');
+    } finally {
+      setSaving(false);
     }
-
-    await setDoc(doc(db, 'users', user.uid), { availability }, { merge: true });
-    alert('Availability saved!');
   };
 
   return (
-    <ThemedView style={{ flex: 1, backgroundColor }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <ThemedText style={styles.header}>Your Weekly Availability</ThemedText>
-
-        {weekdays.map(day => (
-          <ThemedView key={day} style={[styles.card, { backgroundColor: cardColor }]}>
-            <ThemedView style={styles.row}>
-              <ThemedText style={[styles.dayText, { color: textColor }]}>{day}</ThemedText>
-              <Switch
-                value={availability?.[day]?.available ?? false}
-                onValueChange={() => toggleDay(day)}
-              />
-            </ThemedView>
-
-            {availability?.[day]?.available && (
-              <ThemedView style={styles.timeRow}>
-                <TouchableOpacity
-                  style={styles.timeButton}
-                  onPress={() => setShowTimePicker({ show: true, day, type: 'start' })}
-                >
-                  <ThemedText>Start: {availability?.[day]?.start ?? '--:--'}</ThemedText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.timeButton}
-                  onPress={() => setShowTimePicker({ show: true, day, type: 'end' })}
-                >
-                  <ThemedText>End: {availability?.[day]?.end ?? '--:--'}</ThemedText>
-                </TouchableOpacity>
-              </ThemedView>
-            )}
-          </ThemedView>
-        ))}
-
-        <TouchableOpacity onPress={handleSave} style={styles.saveBtn}>
-          <ThemedText style={{ color: '#fff', fontWeight: '700' }}>Save Availability</ThemedText>
-        </TouchableOpacity>
-
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <AppHeader title="Availability" subtitle="Set when you can donate" onBack={() => router.back()} />
+      <ScrollView contentContainerStyle={styles.content}>
+        {weekdays.map((day) => {
+          const dayData = availability?.[day];
+          return (
+            <AppCard key={day} style={styles.card}>
+              <View style={styles.row}>
+                <View>
+                  <Text style={[styles.day, { color: colors.text }]}>{day}</Text>
+                  <Text style={[styles.hint, { color: colors.textMuted }]}>{dayData?.available ? 'Available for donation' : 'Unavailable'}</Text>
+                </View>
+                <Switch value={dayData?.available ?? false} onValueChange={() => toggleDay(day)} trackColor={{ false: colors.border, true: colors.primarySoft }} thumbColor={dayData?.available ? colors.primary : '#f4f3f4'} />
+              </View>
+              {dayData?.available ? (
+                <View style={styles.timeRow}>
+                  <Pressable style={[styles.timeBtn, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={() => setShowTimePicker({ show: true, day, type: 'start' })}>
+                    <Text style={[styles.timeLabel, { color: colors.textMuted }]}>Start</Text>
+                    <Text style={[styles.timeValue, { color: colors.text }]}>{dayData?.start ?? '--:--'}</Text>
+                  </Pressable>
+                  <Pressable style={[styles.timeBtn, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={() => setShowTimePicker({ show: true, day, type: 'end' })}>
+                    <Text style={[styles.timeLabel, { color: colors.textMuted }]}>End</Text>
+                    <Text style={[styles.timeValue, { color: colors.text }]}>{dayData?.end ?? '--:--'}</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </AppCard>
+          );
+        })}
+        <AppButton label="Save Availability" onPress={handleSave} loading={saving} style={{ marginTop: spacing.sm }} />
         {showTimePicker.show && (
-          <DateTimePicker
-            value={new Date()}
-            mode="time"
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            onChange={handleTimeChange}
-          />
+          <DateTimePicker value={new Date()} mode="time" display={Platform.OS === 'ios' ? 'spinner' : 'default'} onChange={handleTimeChange} />
         )}
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginTop: 16,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  card: {
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginHorizontal: 16,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  dayText: { fontSize: 15, fontWeight: '600' },
-  timeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
-  },
-  timeButton: {
-    padding: 8,
-    backgroundColor: '#ccc',
-    borderRadius: 8,
-    minWidth: 100,
-    alignItems: 'center',
-  },
-  saveBtn: {
-    marginTop: 20,
-    marginBottom: 40,
-    backgroundColor: '#e53935',
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginHorizontal: 16,
-  },
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  card: { marginBottom: spacing.md },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  day: { ...typography.h3, fontSize: 17 },
+  hint: { ...typography.caption, marginTop: 2 },
+  timeRow: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.lg },
+  timeBtn: { flex: 1, borderWidth: 1, borderRadius: radii.md, padding: spacing.md },
+  timeLabel: { ...typography.caption, marginBottom: 2 },
+  timeValue: { ...typography.bodySm, fontWeight: '700' },
 });

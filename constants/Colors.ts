@@ -1,26 +1,56 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+import { colors } from './theme';
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
-    tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
-    tabIconSelected: tintColorLight,
+    text: colors.light.text,
+    background: colors.light.background,
+    tint: colors.light.tint,
+    icon: colors.light.icon,
+    tabIconDefault: colors.light.tabIconDefault,
+    tabIconSelected: colors.light.tabIconSelected,
+    card: colors.light.card,
+    border: colors.light.border,
+    borderStrong: colors.light.borderStrong,
+    notification: colors.light.notification,
+    inputBackground: colors.light.inputBackground,
+    placeholder: colors.light.placeholder,
+    primary: colors.light.primary,
+    primaryDark: colors.light.primaryDark,
+    primarySoft: colors.light.primarySoft,
+    success: colors.light.success,
+    successSoft: colors.light.successSoft,
+    warning: colors.light.warning,
+    warningSoft: colors.light.warningSoft,
+    danger: colors.light.danger,
+    dangerSoft: colors.light.dangerSoft,
+    textMuted: colors.light.textMuted,
+    surface: colors.light.surface,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
-    tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
-    tabIconSelected: tintColorDark,
+    text: colors.dark.text,
+    background: colors.dark.background,
+    tint: colors.dark.tint,
+    icon: colors.dark.icon,
+    tabIconDefault: colors.dark.tabIconDefault,
+    tabIconSelected: colors.dark.tabIconSelected,
+    card: colors.dark.card,
+    border: colors.dark.border,
+    borderStrong: colors.dark.borderStrong,
+    notification: colors.dark.notification,
+    inputBackground: colors.dark.inputBackground,
+    placeholder: colors.dark.placeholder,
+    primary: colors.dark.primary,
+    primaryDark: colors.dark.primaryDark,
+    primarySoft: colors.dark.primarySoft,
+    success: colors.dark.success,
+    successSoft: colors.dark.successSoft,
+    warning: colors.dark.warning,
+    warningSoft: colors.dark.warningSoft,
+    danger: colors.dark.danger,
+    dangerSoft: colors.dark.dangerSoft,
+    textMuted: colors.dark.textMuted,
+    surface: colors.dark.surface,
   },
 };
+
+export type AppColorName = keyof typeof Colors.light;

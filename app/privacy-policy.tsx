@@ -1,44 +1,43 @@
 import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import { ThemedText, ThemedView } from '../components/Themed';
-import { ms, vs } from '../constants/Layout';
+import { ScrollView, StyleSheet, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { AppHeader, AppCard } from '@/components/ui';
+import { spacing, typography } from '@/constants/theme';
+import { useAppTheme } from '@/components/Themed';
 
 export default function PrivacyPolicyScreen() {
+  const { colors } = useAppTheme();
+  const router = useRouter();
   return (
-    <ThemedView style={styles.container}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <AppHeader title="Privacy Policy" subtitle="How we handle your information" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.content}>
-        <ThemedText type="title" style={styles.header}>Privacy Policy</ThemedText>
-
-        <ThemedText style={styles.paragraph}>
-          At Rakt Rekha, we value your privacy. We only collect information necessary to connect 
-          donors with recipients in emergencies and ensure the safety of our users.
-        </ThemedText>
-
-        <ThemedText style={styles.subheader}>Data We Collect</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          We collect basic details like your name, contact information, and location to facilitate 
-          matching with nearby donors or recipients.
-        </ThemedText>
-
-        <ThemedText style={styles.subheader}>How We Use Data</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          The information is strictly used to provide lifesaving connections. We do not sell or 
-          share data with third parties without your consent.
-        </ThemedText>
-
-        <ThemedText style={styles.subheader}>Contact Us</ThemedText>
-        <ThemedText style={styles.paragraph}>
-          For questions about this policy, reach out at: raktrekha@gmail.com
-        </ThemedText>
+        <AppCard>
+          <Text style={[styles.p, { color: colors.textMuted }]}>
+            At Rakt Rekha, we value your privacy. We only collect information necessary to connect donors with recipients in emergencies and ensure the safety of our users.
+          </Text>
+          <Text style={[styles.h, { color: colors.text }]}>Data We Collect</Text>
+          <Text style={[styles.p, { color: colors.textMuted }]}>
+            We collect basic details like your name, contact information, and location to facilitate matching with nearby donors or recipients.
+          </Text>
+          <Text style={[styles.h, { color: colors.text }]}>How We Use Data</Text>
+          <Text style={[styles.p, { color: colors.textMuted }]}>
+            The information is strictly used to provide lifesaving connections. We do not sell or share data with third parties without your consent.
+          </Text>
+          <Text style={[styles.h, { color: colors.text }]}>Contact Us</Text>
+          <Text style={[styles.p, { color: colors.textMuted, marginBottom: 0 }]}>
+            For questions about this policy, reach out at: raktrekha@gmail.com
+          </Text>
+        </AppCard>
       </ScrollView>
-    </ThemedView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: ms(14), paddingTop: vs(20) },
-  content: { paddingBottom: vs(40) },
-  header: { fontSize: ms(20), fontWeight: '700', marginBottom: vs(12), textAlign: 'center' },
-  subheader: { fontSize: ms(16), fontWeight: '600', marginTop: vs(10), marginBottom: vs(4) },
-  paragraph: { fontSize: ms(13), lineHeight: vs(18), marginBottom: vs(8) },
+  safe: { flex: 1 },
+  content: { padding: spacing.xl, paddingBottom: spacing.xxxl },
+  h: { ...typography.h3, fontSize: 17, marginTop: spacing.lg, marginBottom: spacing.sm },
+  p: { ...typography.bodySm, marginBottom: spacing.md },
 });
